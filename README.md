@@ -81,15 +81,21 @@ Charts are generated with minimal styling (no axes, grids, or titles) showing on
 
 ## MCP Integration
 
-To use with Claude Code or other MCP clients, configure the server in your MCP settings:
+To use with Codex CLI or other MCP clients, configure the server in your MCP settings:
 
 ```json
 {
   "mcpServers": {
     "stockcharts": {
-      "command": "java",
-      "args": ["-cp", "target/classes", "com.stockcharts.app.StockChartsMcpServer"]
+      "command": "mvn",
+      "args": ["-q", "exec:java", "-Dexec.mainClass=com.stockcharts.app.StockChartsMcpServer"],
+      "env": {
+        "POLYGON_API_KEY": "your_polygon_api_key_here"
+      },
+      "cwd": "/absolute/path/to/this/repo"
     }
   }
 }
 ```
+
+Alternatively, build a shaded JAR and point Codex to `java -jar` (ask us to add the shade plugin if you prefer this option).
