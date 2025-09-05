@@ -10,6 +10,12 @@ import java.util.List;
 
 @Service
 public class IndicatorService {
+    
+    private final PolygonService polygonService;
+    
+    public IndicatorService(PolygonService polygonService) {
+        this.polygonService = polygonService;
+    }
 
     public static class IndicatorValue {
         private final LocalDate date;
@@ -46,12 +52,77 @@ public class IndicatorService {
     @Tool(description = "Calculate technical indicators like SMA, EMA, RSI, MACD for stock data")
     public String calculateIndicator(String symbol, String indicator, Integer period) {
         try {
-            // For now, return a mock response since we need actual stock data
-            // In a real implementation, you would fetch the data using PolygonService
             if (period == null) period = 14;
             
-            return String.format("Calculated %s for %s with period %d. This would return actual indicator values in a real implementation.", 
-                indicator.toUpperCase(), symbol, period);
+            // Fetch stock data
+            List<OhlcData> stockData = polygonService.getAggregates(
+                symbol, "1", "day", 
+                "2025-08-01", "2025-09-05", 
+                true, "asc", 100);
+                
+            if (stockData.isEmpty()) {
+                return "No data available for " + symbol;
+            }
+            
+            StringBuilder result = new StringBuilder();
+            result.append(String.format("%s Indicator for %s (period: %d):\n\n", 
+                indicator.toUpperCase(), symbol, period));
+            
+            switch (indicator.toLowerCase()) {
+                case "sma":
+                    List<IndicatorValue> smaValues = sma(stockData, period);
+                    result.append("Date       | SMA\n");
+                    result.append("-----------|--------\n");
+                    for (IndicatorValue value : smaValues.subList(Math.max(0, smaValues.size() - 10), smaValues.size())) {
+                        result.append(String.format("%-10s | %7.2f\n", value.getDate(), value.getValue()));
+                    }
+                    break;
+                    
+                case "ema":
+                    List<IndicatorValue> emaValues = ema(stockData, period);
+                    result.append("Date       | EMA\n");
+                    result.append("-----------|--------\n");
+                    for (IndicatorValue value : emaValues.subList(Math.max(0, emaValues.size() - 10), emaValues.size())) {
+                        result.append(String.format("%-10s | %7.2f\n", value.getDate(), value.getValue()));
+                    }
+                    break;
+                    
+                case "rsi":
+                    List<IndicatorValue> rsiValues = rsi(stockData, period);
+                    result.append("Date       | RSI\n");
+                    result.append("-----------|--------\n");
+                    for (IndicatorValue value : rsiValues.subList(Math.max(0, rsiValues.size() - 10), rsiValues.size())) {
+                        result.append(String.format("%-10s | %7.2f\n", value.getDate(), value.getValue()));
+                    }
+                    break;
+                    
+                case "dpo":
+                case "detrended":
+                    List<IndicatorValue> dpoValues = detrendedPriceOscillator(stockData, period);
+                    result.append("Date       | DPO\n");
+                    result.append("-----------|--------\n");
+                    for (IndicatorValue value : dpoValues.subList(Math.max(0, dpoValues.size() - 10), dpoValues.size())) {
+                        result.append(String.format("%-10s | %7.2f\n", value.getDate(), value.getValue()));
+                    }
+                    break;
+                    
+                case "macd":
+                    List<MacdValue> macdValues = macd(stockData, 12, 26, 9);
+                    result.append("Date       | MACD   | Signal | Histogram\n");
+                    result.append("-----------|--------|--------|----------\n");
+                    for (MacdValue value : macdValues.subList(Math.max(0, macdValues.size() - 10), macdValues.size())) {
+                        result.append(String.format("%-10s | %6.3f | %6.3f | %9.3f\n", 
+                            value.getDate(), value.getMacd(), value.getSignal(), value.getHistogram()));
+                    }
+                    break;
+                    
+                default:
+                    return "Unsupported indicator: " + indicator + ". Supported: SMA, EMA, RSI, DPO/DETRENDED, MACD";
+            }
+            
+            result.append(String.format("\nTotal data points: %d", stockData.size()));
+            return result.toString();
+            
         } catch (Exception e) {
             return "Error calculating indicator: " + e.getMessage();
         }
@@ -72,6 +143,45 @@ public class IndicatorService {
                 result.add(new IndicatorValue(data.get(i).getDate(), avg));
             }
         }
+        return result;
+    }
+
+    public List<IndicatorValue> ema(List<OhlcData> data, int period) {
+        List<IndicatorValue> result = new ArrayList<>();
+        if (data == null || data.size() < period || period <= 0) return result;
+
+        double[] closes = new double[data.size()];
+        for (int i = 0; i < data.size(); i++) {
+            closes[i] = data.get(i).getClose();
+        }
+
+        double[] emaValues = emaSeries(closes, period);
+        
+        for (int i = 0; i < emaValues.length; i++) {
+            if (!Double.isNaN(emaValues[i])) {
+                result.add(new IndicatorValue(data.get(i).getDate(), emaValues[i]));
+            }
+        }
+        return result;
+    }
+
+    public List<IndicatorValue> detrendedPriceOscillator(List<OhlcData> data, int period) {
+        List<IndicatorValue> result = new ArrayList<>();
+        if (data == null || data.size() < period + period/2 || period <= 0) return result;
+
+        // Calculate SMA first
+        List<IndicatorValue> smaValues = sma(data, period);
+        
+        // DPO = Close - SMA[period/2 + 1 periods ago]
+        int offset = (period / 2) + 1;
+        
+        for (int i = offset; i < data.size() && (i - offset) < smaValues.size(); i++) {
+            double close = data.get(i).getClose();
+            double sma = smaValues.get(i - offset).getValue();
+            double dpo = close - sma;
+            result.add(new IndicatorValue(data.get(i).getDate(), dpo));
+        }
+        
         return result;
     }
 

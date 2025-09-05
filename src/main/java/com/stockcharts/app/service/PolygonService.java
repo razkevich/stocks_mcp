@@ -86,7 +86,7 @@ public class PolygonService {
         return ohlcDataList;
     }
     
-    @Tool(description = "Get stock market data for a given symbol including OHLC data and current price")
+    @Tool(description = "Get stock market data for a given symbol or ratio (e.g., AAPL or AAPL/SPY) including OHLC data and current price")
     public String getStockData(String symbol, String period) {
         try {
             // Parse period to determine the timeframe
@@ -119,10 +119,18 @@ public class PolygonService {
                 }
             }
             
-            return getStockDataAsText(symbol, multiplier, timespan, 
-                startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
-                endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
-                true, "asc", 50);
+            // Check if this is a ratio (contains "/")
+            if (symbol.contains("/")) {
+                return getRatioDataAsText(symbol, multiplier, timespan, 
+                    startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                    endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                    true, "asc", 50);
+            } else {
+                return getStockDataAsText(symbol, multiplier, timespan, 
+                    startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                    endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                    true, "asc", 50);
+            }
         } catch (Exception e) {
             return "Error retrieving stock data: " + e.getMessage();
         }
@@ -154,6 +162,68 @@ public class PolygonService {
             
         } catch (Exception e) {
             return "Error fetching stock data: " + e.getMessage();
+        }
+    }
+    
+    public String getRatioDataAsText(String ratioSymbol, String multiplier, String timespan, 
+                                   String from, String to, boolean adjusted, String sort, int limit) {
+        try {
+            String[] symbols = ratioSymbol.split("/");
+            if (symbols.length != 2) {
+                return "Invalid ratio format. Use SYMBOL1/SYMBOL2";
+            }
+            
+            String numeratorSymbol = symbols[0].trim();
+            String denominatorSymbol = symbols[1].trim();
+            
+            // Get data for both symbols
+            List<OhlcData> numeratorData = getAggregates(numeratorSymbol, multiplier, timespan, from, to, adjusted, sort, limit);
+            List<OhlcData> denominatorData = getAggregates(denominatorSymbol, multiplier, timespan, from, to, adjusted, sort, limit);
+            
+            // Create a map for denominator data for quick lookup
+            java.util.Map<LocalDate, OhlcData> denominatorMap = new java.util.HashMap<>();
+            for (OhlcData data : denominatorData) {
+                denominatorMap.put(data.getDate(), data);
+            }
+            
+            // Calculate ratio data
+            List<OhlcData> ratioData = new ArrayList<>();
+            for (OhlcData numData : numeratorData) {
+                OhlcData denomData = denominatorMap.get(numData.getDate());
+                if (denomData != null && denomData.getClose() != 0 && denomData.getOpen() != 0 && 
+                    denomData.getHigh() != 0 && denomData.getLow() != 0) {
+                    
+                    double ratioOpen = numData.getOpen() / denomData.getOpen();
+                    double ratioHigh = numData.getHigh() / denomData.getHigh();
+                    double ratioLow = numData.getLow() / denomData.getLow();
+                    double ratioClose = numData.getClose() / denomData.getClose();
+                    
+                    ratioData.add(new OhlcData(numData.getDate(), ratioOpen, ratioHigh, ratioLow, ratioClose));
+                }
+            }
+            
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("Ratio data for %s (%s %s bars from %s to %s):\n\n", 
+                ratioSymbol.toUpperCase(), multiplier, timespan, from, to));
+            sb.append("Date       | Open     | High     | Low      | Close\n");
+            sb.append("-----------|----------|----------|----------|----------\n");
+            
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            for (OhlcData ohlc : ratioData) {
+                sb.append(String.format("%-10s | %8.4f | %8.4f | %8.4f | %8.4f\n",
+                    ohlc.getDate().format(formatter),
+                    ohlc.getOpen(),
+                    ohlc.getHigh(),
+                    ohlc.getLow(),
+                    ohlc.getClose()));
+            }
+            
+            sb.append(String.format("\nTotal records: %d\n", ratioData.size()));
+            sb.append(String.format("Numerator: %s, Denominator: %s\n", numeratorSymbol, denominatorSymbol));
+            return sb.toString();
+            
+        } catch (Exception e) {
+            return "Error calculating ratio data: " + e.getMessage();
         }
     }
 }

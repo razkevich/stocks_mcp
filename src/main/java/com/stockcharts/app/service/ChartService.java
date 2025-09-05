@@ -25,41 +25,72 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ChartService {
+    
+    private final PolygonService polygonService;
+    
+    public ChartService(PolygonService polygonService) {
+        this.polygonService = polygonService;
+    }
 
     static {
         // Ensure charts render in environments without a display
         System.setProperty("java.awt.headless", "true");
     }
 
-    @Tool(description = "Generate a stock chart for a given symbol with specified chart type (candlestick, line, ohlc)")
-    public String generateChart(String symbol, String chartType, String period, String startDate, String endDate) {
+    @Tool(description = "Generate a stock chart for a given symbol or ratio (e.g., AAPL or AAPL/SPY) with specified chart type (candlestick, line, ohlc). To draw a line, provide lineStartDate, lineEndDate, lineStartValue, lineEndValue.")
+    public String generateChart(String symbol, String chartType, String period, String startDate, String endDate, String lineStartDate, String lineEndDate, Double lineStartValue, Double lineEndValue) {
         try {
             ChartRequest request = new ChartRequest();
-            // Use reflection to set fields since we don't have setters
-            java.lang.reflect.Field symbolField = ChartRequest.class.getDeclaredField("symbol");
-            symbolField.setAccessible(true);
-            symbolField.set(request, symbol);
+            request.setSymbol(symbol);
+            request.setChartType(chartType != null ? chartType : "candlestick");
+            request.setPeriod(period != null ? period : "1D");
+            request.setStartDate(startDate);
+            request.setEndDate(endDate);
+            request.setTitle(symbol + " Stock Chart");
             
-            java.lang.reflect.Field chartTypeField = ChartRequest.class.getDeclaredField("chartType");
-            chartTypeField.setAccessible(true);
-            chartTypeField.set(request, chartType != null ? chartType : "candlestick");
+            // Check if this is a ratio (contains "/")
+            java.util.List<OhlcData> stockData;
+            if (symbol.contains("/")) {
+                stockData = calculateRatioData(symbol, startDate, endDate);
+            } else {
+                // Get stock data from PolygonService
+                stockData = polygonService.getAggregates(
+                    symbol, "1", "day", 
+                    startDate != null ? startDate : "2025-08-01", 
+                    endDate != null ? endDate : "2025-09-05", 
+                    true, "asc", 100);
+            }
+            request.setOhlcData(stockData);
             
-            java.lang.reflect.Field periodField = ChartRequest.class.getDeclaredField("period");
-            periodField.setAccessible(true);
-            periodField.set(request, period != null ? period : "1D");
-            
-            java.lang.reflect.Field startDateField = ChartRequest.class.getDeclaredField("startDate");
-            startDateField.setAccessible(true);
-            startDateField.set(request, startDate);
-            
-            java.lang.reflect.Field endDateField = ChartRequest.class.getDeclaredField("endDate");
-            endDateField.setAccessible(true);
-            endDateField.set(request, endDate);
+            // Add custom line if coordinates provided
+            if (lineStartDate != null && lineEndDate != null && lineStartValue != null && lineEndValue != null) {
+                java.util.List<LineData> lines = new java.util.ArrayList<>();
+                LineData customLine = new LineData(
+                    java.time.LocalDate.parse(lineStartDate),
+                    java.time.LocalDate.parse(lineEndDate),
+                    lineStartValue,
+                    lineEndValue
+                );
+                customLine.setColor("#FF0000"); // Red line
+                customLine.setStrokeWidth(4.0f); // Thicker line
+                lines.add(customLine);
+                request.setLines(lines);
+                System.out.println("DEBUG: Added line from " + lineStartDate + " ($" + lineStartValue + ") to " + lineEndDate + " ($" + lineEndValue + ")");
+            }
             
             byte[] chartData = generateChartBytes(request);
-            String base64Chart = Base64.getEncoder().encodeToString(chartData);
             
-            return "Chart generated successfully for " + symbol + ". Chart data: data:image/png;base64," + base64Chart;
+            // Save chart to file
+            String fileName = symbol.replace("/", "_") + "_" + chartType + "_chart.png";
+            String filePath = fileName;
+            try {
+                java.nio.file.Files.write(java.nio.file.Paths.get(filePath), chartData);
+                return "Chart generated successfully for " + symbol + ". Chart saved to: " + filePath;
+            } catch (Exception e) {
+                return "Error saving chart to file: " + e.getMessage();
+            }
+        } catch (IOException | InterruptedException e) {
+            return "Error fetching stock data: " + e.getMessage();
         } catch (Exception e) {
             return "Error generating chart: " + e.getMessage();
         }
@@ -73,7 +104,7 @@ public class ChartService {
         }
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ChartUtils.writeChartAsJPEG(baos, chart, request.getWidth(), request.getHeight());
+        ChartUtils.writeChartAsPNG(baos, chart, request.getWidth(), request.getHeight());
         return baos.toByteArray();
     }
 
@@ -144,19 +175,71 @@ public class ChartService {
         XYPlot plot = (XYPlot) chart.getPlot();
         
         for (LineData line : request.getLines()) {
-            double startDateMillis = line.getStartDate().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
-            double endDateMillis = line.getEndDate().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            // Convert dates to Day objects like the OHLC data, then get the serial number
+            Date startDate = Date.from(line.getStartDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+            Date endDate = Date.from(line.getEndDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+            Day startDay = new Day(startDate);
+            Day endDay = new Day(endDate);
             
             XYLineAnnotation annotation = new XYLineAnnotation(
-                    startDateMillis,
+                    startDay.getMiddleMillisecond(),
                     line.getStartValue(),
-                    endDateMillis,
+                    endDay.getMiddleMillisecond(),
                     line.getEndValue(),
                     new BasicStroke(line.getStrokeWidth()),
                     line.getAwtColor()
             );
             
+            System.out.println("DEBUG: Adding line annotation from " + startDay.getMiddleMillisecond() + "," + line.getStartValue() + " to " + endDay.getMiddleMillisecond() + "," + line.getEndValue());
             plot.addAnnotation(annotation);
         }
+    }
+    
+    private java.util.List<OhlcData> calculateRatioData(String ratioSymbol, String startDate, String endDate) throws IOException, InterruptedException {
+        String[] symbols = ratioSymbol.split("/");
+        if (symbols.length != 2) {
+            throw new IllegalArgumentException("Invalid ratio format. Use SYMBOL1/SYMBOL2");
+        }
+        
+        String numeratorSymbol = symbols[0].trim();
+        String denominatorSymbol = symbols[1].trim();
+        
+        // Get data for both symbols
+        java.util.List<OhlcData> numeratorData = polygonService.getAggregates(
+            numeratorSymbol, "1", "day", 
+            startDate != null ? startDate : "2025-08-01", 
+            endDate != null ? endDate : "2025-09-05", 
+            true, "asc", 100);
+            
+        java.util.List<OhlcData> denominatorData = polygonService.getAggregates(
+            denominatorSymbol, "1", "day", 
+            startDate != null ? startDate : "2025-08-01", 
+            endDate != null ? endDate : "2025-09-05", 
+            true, "asc", 100);
+            
+        // Create a map for denominator data for quick lookup
+        java.util.Map<java.time.LocalDate, OhlcData> denominatorMap = new java.util.HashMap<>();
+        for (OhlcData data : denominatorData) {
+            denominatorMap.put(data.getDate(), data);
+        }
+        
+        // Calculate ratio data
+        java.util.List<OhlcData> ratioData = new java.util.ArrayList<>();
+        for (OhlcData numData : numeratorData) {
+            OhlcData denomData = denominatorMap.get(numData.getDate());
+            if (denomData != null && denomData.getClose() != 0 && denomData.getOpen() != 0 && 
+                denomData.getHigh() != 0 && denomData.getLow() != 0) {
+                
+                double ratioOpen = numData.getOpen() / denomData.getOpen();
+                double ratioHigh = numData.getHigh() / denomData.getHigh();
+                double ratioLow = numData.getLow() / denomData.getLow();
+                double ratioClose = numData.getClose() / denomData.getClose();
+                
+                OhlcData ratioOhlc = new OhlcData(numData.getDate(), ratioOpen, ratioHigh, ratioLow, ratioClose);
+                ratioData.add(ratioOhlc);
+            }
+        }
+        
+        return ratioData;
     }
 }

@@ -3,6 +3,11 @@ package com.stockcharts.app.model;
 import java.util.List;
 
 public class ChartRequest {
+    private String symbol;
+    private String chartType = "candlestick";
+    private String period = "1D";
+    private String startDate;
+    private String endDate;
     private List<OhlcData> ohlcData;
     private List<LineData> lines;
     private String title = "Stock Chart";
@@ -54,5 +59,45 @@ public class ChartRequest {
 
     public void setHeight(int height) {
         this.height = height;
+    }
+
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public void setSymbol(String symbol) {
+        this.symbol = symbol;
+    }
+
+    public String getChartType() {
+        return chartType;
+    }
+
+    public void setChartType(String chartType) {
+        this.chartType = chartType;
+    }
+
+    public String getPeriod() {
+        return period;
+    }
+
+    public void setPeriod(String period) {
+        this.period = period;
+    }
+
+    public String getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(String startDate) {
+        this.startDate = startDate;
+    }
+
+    public String getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(String endDate) {
+        this.endDate = endDate;
     }
 }

@@ -6,7 +6,13 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:modelcontextprotocol.io)",
       "WebFetch(domain:mvnrepository.com)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(timeout:*)",
+      "mcp__stockcharts__generateChart",
+      "mcp__stockcharts__getStockData",
+      "mcp__stockcharts__calculateIndicator",
+      "mcp__stockcharts__calculateRatio",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
