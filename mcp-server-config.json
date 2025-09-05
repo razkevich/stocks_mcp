@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "stockcharts": {
+      "command": "java",
+      "args": [
+        "-cp",
+        "target/classes",
+        "com.stockcharts.app.StockChartsMcpServer"
+      ],
+      "env": {}
+    }
+  }
+}

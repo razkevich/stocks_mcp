@@ -1,0 +1,62 @@
+{
+  "ohlcData": [
+    {
+      "date": "2024-01-01",
+      "open": 100.0,
+      "high": 110.0,
+      "low": 95.0,
+      "close": 105.0
+    },
+    {
+      "date": "2024-01-02",
+      "open": 105.0,
+      "high": 115.0,
+      "low": 100.0,
+      "close": 108.0
+    },
+    {
+      "date": "2024-01-03",
+      "open": 108.0,
+      "high": 120.0,
+      "low": 105.0,
+      "close": 115.0
+    },
+    {
+      "date": "2024-01-04",
+      "open": 115.0,
+      "high": 125.0,
+      "low": 110.0,
+      "close": 120.0
+    },
+    {
+      "date": "2024-01-05",
+      "open": 120.0,
+      "high": 130.0,
+      "low": 115.0,
+      "close": 125.0
+    }
+  ],
+  "lines": [
+    {
+      "startDate": "2024-01-01",
+      "endDate": "2024-01-05",
+      "startValue": 100.0,
+      "endValue": 125.0,
+      "color": "#FF0000",
+      "strokeWidth": 2.0,
+      "label": "Trend Line"
+    },
+    {
+      "startDate": "2024-01-02",
+      "endDate": "2024-01-04",
+      "startValue": 110.0,
+      "endValue": 120.0,
+      "color": "#0000FF",
+      "strokeWidth": 1.5,
+      "label": "Support Line"
+    }
+  ],
+  "title": "Sample Stock Chart",
+  "width": 800,
+  "height": 600
+}

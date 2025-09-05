@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn clean compile)",
+      "Bash(mvn:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:modelcontextprotocol.io)",
+      "WebFetch(domain:mvnrepository.com)",
+      "Bash(chmod:*)"
+    ],
+    "deny": []
+  }
+}
