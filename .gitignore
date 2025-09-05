@@ -25,3 +25,4 @@ config/local.properties
 # Java
 *.class
 
+*.png
