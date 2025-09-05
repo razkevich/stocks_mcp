@@ -2,6 +2,7 @@ package com.stockcharts.app.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stockcharts.app.config.Config;
 import com.stockcharts.app.model.OhlcData;
 
 import java.io.IOException;
@@ -18,7 +19,6 @@ import java.util.List;
 
 public class PolygonService {
     
-    private static final String API_KEY = "RGdVqZNHE_Iryopre7gfYYd7YESCakmY";
     private static final String BASE_URL = "https://api.polygon.io";
     
     private final HttpClient httpClient;
@@ -42,7 +42,7 @@ public class PolygonService {
             URLEncoder.encode(to, StandardCharsets.UTF_8));
         
         url += String.format("?adjusted=%s&sort=%s&limit=%d&apikey=%s", 
-            adjusted, sort, limit, API_KEY);
+            adjusted, sort, limit, Config.getPolygonApiKey());
         
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(url))

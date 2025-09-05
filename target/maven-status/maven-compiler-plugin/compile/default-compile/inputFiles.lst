@@ -1,13 +1,13 @@
 /Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/service/ChartService.java
-/Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/controller/StockDataController.java
-/Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/config/ServiceConfig.java
 /Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/mcp/McpMessage.java
 /Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/model/LineData.java
-/Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/StockChartsApplication.java
+/Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/service/IndicatorService.java
 /Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/mcp/StockChartTool.java
 /Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/model/ChartRequest.java
 /Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/StockChartsMcpServer.java
-/Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/controller/ChartController.java
+/Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/config/Config.java
 /Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/model/OhlcData.java
 /Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/mcp/StockDataTool.java
 /Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/service/PolygonService.java
+/Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/mcp/TechnicalIndicatorTool.java
+/Users/razkevich/code/stockcharts-mcp/src/main/java/com/stockcharts/app/mcp/RatioTool.java

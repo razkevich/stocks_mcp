@@ -1,100 +1,46 @@
 # Stock Charts MCP Server
 
-A Java application that provides both REST API and MCP (Model Context Protocol) server functionality for generating stock charts and fetching stock data from Polygon.io.
+A Java application that provides an MCP (Model Context Protocol) server for generating stock charts, computing indicators, and fetching stock data from Polygon.io.
 
 ## Features
 
 - **Chart Generation**: Create minimal candlestick charts with custom overlay lines using JFreeChart
-- **Stock Data**: Fetch OHLC stock price data from Polygon.io  
-- **REST API**: Traditional HTTP endpoints for web integration
+- **Stock Data**: Fetch OHLC stock price data from Polygon.io
+- **Technical Indicators**: SMA, RSI, MACD over OHLC data
+- **Ratios**: Compute OHLC ratios between two datasets
 - **MCP Server**: Protocol-compliant server for AI agent integration
 
 ## Technologies Used
 
 - **Java 17**
-- **Spring Boot** - REST API framework
 - **JFreeChart** - Chart generation library
 - **Polygon.io API** - Stock data source
 - **Jackson** - JSON processing
 - **MCP Protocol** - AI agent communication
 
-## API Endpoints
+## MCP Server
 
-### REST API (Spring Boot)
-
-#### Generate Stock Chart
-```http
-POST /api/chart/generate
-Content-Type: application/json
-
-{
-  "ohlcData": [
-    {
-      "date": "2024-01-01",
-      "open": 100.0,
-      "high": 110.0, 
-      "low": 95.0,
-      "close": 105.0
-    }
-  ],
-  "lines": [
-    {
-      "startDate": "2024-01-01",
-      "endDate": "2024-01-05",
-      "startValue": 100.0,
-      "endValue": 125.0,
-      "color": "#FF0000",
-      "strokeWidth": 2.0
-    }
-  ],
-  "width": 800,
-  "height": 600
-}
-```
-
-#### Get Stock Data  
-```http
-GET /api/stock/data?ticker=AAPL&from=2024-01-01&to=2024-01-05
-```
-
-### MCP Server
-
-The MCP server provides two tools:
+The MCP server provides tools:
 
 1. **generate_stock_chart** - Generate chart images from OHLC data
 2. **get_stock_data** - Fetch stock price data from Polygon.io
+3. **calculate_technical_indicator** - Compute indicators over OHLC data
+   - operation: `sma` (period, default 20), `rsi` (period, default 14), `macd` (fastPeriod 12, slowPeriod 26, signalPeriod 9)
+   - input: `ohlcData` array
+   - returns: formatted text table
+4. **calculate_ratio** - Compute OHLC ratios of two datasets
+   - operation: `ratio`
+   - input: `ohlcData1`, `ohlcData2` arrays
+   - returns: formatted text table of open/high/low/close ratios aligned by date
 
 ## Running the Application
 
-### REST API Server (Default)
+### MCP Server
 ```bash
-mvn spring-boot:run
-```
-Server starts on http://localhost:8080
-
-### MCP Server Mode
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=--mcp
-```
-
-Or alternatively:
-```bash
-mvn compile exec:java -Dexec.mainClass="com.stockcharts.app.StockChartsApplication" -Dexec.args="--mcp"
+mvn compile exec:java -Dexec.mainClass="com.stockcharts.app.StockChartsMcpServer"
 ```
 
 ## Testing
-
-### Test REST Endpoints
-```bash
-# Test stock data endpoint
-curl "http://localhost:8080/api/stock/data?ticker=AAPL&from=2024-01-01&to=2024-01-05"
-
-# Test chart generation
-curl -X POST http://localhost:8080/api/chart/generate \
-  -H "Content-Type: application/json" \
-  -d @test-request.json \
-  --output chart.jpg
-```
 
 ### Test MCP Server
 ```bash
@@ -104,10 +50,21 @@ curl -X POST http://localhost:8080/api/chart/generate \
 ## Configuration
 
 ### Polygon.io API Key
-The API key is hardcoded in `PolygonService.java`:
-```java
-private static final String API_KEY = "RGdVqZNHE_Iryopre7gfYYd7YESCakmY";
+Create a local config file and set your key (do not commit this file):
 ```
+config/local.properties
+```
+Contents:
+```
+POLYGON_API_KEY=your_polygon_api_key_here
+```
+
+Alternatively, set an environment variable:
+```
+export POLYGON_API_KEY=your_polygon_api_key_here
+```
+
+The application reads the key from the env var first, then from `config/local.properties`.
 
 ### Chart Styling
 Charts are generated with minimal styling (no axes, grids, or titles) showing only candlesticks and custom lines.

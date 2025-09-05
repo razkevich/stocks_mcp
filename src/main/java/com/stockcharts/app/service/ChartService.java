@@ -12,7 +12,6 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.time.Day;
 import org.jfree.data.time.ohlc.OHLCSeriesCollection;
 import org.jfree.data.time.ohlc.OHLCSeries;
-import org.springframework.stereotype.Service;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
@@ -21,7 +20,6 @@ import java.text.NumberFormat;
 import java.time.ZoneId;
 import java.util.Date;
 
-@Service
 public class ChartService {
 
     public byte[] generateChart(ChartRequest request) throws IOException {

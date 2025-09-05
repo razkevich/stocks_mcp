@@ -7,8 +7,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.stockcharts.app.mcp.McpMessage;
 import com.stockcharts.app.mcp.StockChartTool;
 import com.stockcharts.app.mcp.StockDataTool;
+import com.stockcharts.app.mcp.TechnicalIndicatorTool;
+import com.stockcharts.app.mcp.RatioTool;
 import com.stockcharts.app.service.ChartService;
 import com.stockcharts.app.service.PolygonService;
+import com.stockcharts.app.service.IndicatorService;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -25,8 +28,11 @@ public class StockChartsMcpServer {
             
             ChartService chartService = new ChartService();
             PolygonService polygonService = new PolygonService();
+            IndicatorService indicatorService = new IndicatorService();
             StockChartTool chartTool = new StockChartTool(chartService);
             StockDataTool dataTool = new StockDataTool(polygonService);
+            TechnicalIndicatorTool indicatorTool = new TechnicalIndicatorTool(indicatorService);
+            RatioTool ratioTool = new RatioTool();
             
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             String line;
@@ -34,7 +40,7 @@ public class StockChartsMcpServer {
             while ((line = reader.readLine()) != null) {
                 try {
                     McpMessage request = objectMapper.readValue(line, McpMessage.class);
-                    McpMessage response = handleRequest(request, chartTool, dataTool);
+                    McpMessage response = handleRequest(request, chartTool, dataTool, indicatorTool, ratioTool);
                     
                     if (response != null) {
                         System.out.println(objectMapper.writeValueAsString(response));
@@ -52,7 +58,7 @@ public class StockChartsMcpServer {
         }
     }
     
-    private static McpMessage handleRequest(McpMessage request, StockChartTool chartTool, StockDataTool dataTool) throws Exception {
+    private static McpMessage handleRequest(McpMessage request, StockChartTool chartTool, StockDataTool dataTool, TechnicalIndicatorTool indicatorTool, RatioTool ratioTool) throws Exception {
         String method = request.getMethod();
         
         if ("initialize".equals(method)) {
@@ -80,6 +86,18 @@ public class StockChartsMcpServer {
                 .put("description", dataTool.getDescription());
             dataToolNode.set("inputSchema", dataTool.getInputSchema());
             tools.add(dataToolNode);
+            
+            ObjectNode indicatorToolNode = objectMapper.createObjectNode()
+                .put("name", indicatorTool.getName())
+                .put("description", indicatorTool.getDescription());
+            indicatorToolNode.set("inputSchema", indicatorTool.getInputSchema());
+            tools.add(indicatorToolNode);
+
+            ObjectNode ratioToolNode = objectMapper.createObjectNode()
+                .put("name", ratioTool.getName())
+                .put("description", ratioTool.getDescription());
+            ratioToolNode.set("inputSchema", ratioTool.getInputSchema());
+            tools.add(ratioToolNode);
                     
             ObjectNode result = objectMapper.createObjectNode();
             result.set("tools", tools);
@@ -96,6 +114,10 @@ public class StockChartsMcpServer {
                 toolResult = chartTool.execute(arguments);
             } else if ("get_stock_data".equals(toolName)) {
                 toolResult = dataTool.execute(arguments);
+            } else if ("calculate_technical_indicator".equals(toolName)) {
+                toolResult = indicatorTool.execute(arguments);
+            } else if ("calculate_ratio".equals(toolName)) {
+                toolResult = ratioTool.execute(arguments);
             } else {
                 return McpMessage.error(request.getId(), -32601, "Tool not found: " + toolName);
             }
