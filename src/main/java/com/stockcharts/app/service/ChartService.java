@@ -1,6 +1,7 @@
 package com.stockcharts.app.service;
 
 import com.stockcharts.app.model.ChartRequest;
+import org.springframework.ai.tool.annotation.Tool;
 import com.stockcharts.app.model.LineData;
 import com.stockcharts.app.model.OhlcData;
 import org.jfree.chart.ChartFactory;
@@ -19,7 +20,10 @@ import java.io.IOException;
 import java.text.NumberFormat;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.Base64;
+import org.springframework.stereotype.Service;
 
+@Service
 public class ChartService {
 
     static {
@@ -27,7 +31,41 @@ public class ChartService {
         System.setProperty("java.awt.headless", "true");
     }
 
-    public byte[] generateChart(ChartRequest request) throws IOException {
+    @Tool(description = "Generate a stock chart for a given symbol with specified chart type (candlestick, line, ohlc)")
+    public String generateChart(String symbol, String chartType, String period, String startDate, String endDate) {
+        try {
+            ChartRequest request = new ChartRequest();
+            // Use reflection to set fields since we don't have setters
+            java.lang.reflect.Field symbolField = ChartRequest.class.getDeclaredField("symbol");
+            symbolField.setAccessible(true);
+            symbolField.set(request, symbol);
+            
+            java.lang.reflect.Field chartTypeField = ChartRequest.class.getDeclaredField("chartType");
+            chartTypeField.setAccessible(true);
+            chartTypeField.set(request, chartType != null ? chartType : "candlestick");
+            
+            java.lang.reflect.Field periodField = ChartRequest.class.getDeclaredField("period");
+            periodField.setAccessible(true);
+            periodField.set(request, period != null ? period : "1D");
+            
+            java.lang.reflect.Field startDateField = ChartRequest.class.getDeclaredField("startDate");
+            startDateField.setAccessible(true);
+            startDateField.set(request, startDate);
+            
+            java.lang.reflect.Field endDateField = ChartRequest.class.getDeclaredField("endDate");
+            endDateField.setAccessible(true);
+            endDateField.set(request, endDate);
+            
+            byte[] chartData = generateChartBytes(request);
+            String base64Chart = Base64.getEncoder().encodeToString(chartData);
+            
+            return "Chart generated successfully for " + symbol + ". Chart data: data:image/png;base64," + base64Chart;
+        } catch (Exception e) {
+            return "Error generating chart: " + e.getMessage();
+        }
+    }
+
+    public byte[] generateChartBytes(ChartRequest request) throws IOException {
         JFreeChart chart = createOHLCChart(request);
         
         if (request.getLines() != null && !request.getLines().isEmpty()) {

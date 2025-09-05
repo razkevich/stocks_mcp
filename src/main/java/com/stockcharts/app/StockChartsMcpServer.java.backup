@@ -13,10 +13,13 @@ import com.stockcharts.app.service.ChartService;
 import com.stockcharts.app.service.PolygonService;
 import com.stockcharts.app.service.IndicatorService;
 
-import java.io.BufferedReader;
+import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.HashMap;
 
 public class StockChartsMcpServer {
     
@@ -24,6 +27,7 @@ public class StockChartsMcpServer {
     
     public static void main(String[] args) {
         try {
+            System.err.println("MCP Server starting...");
             objectMapper.findAndRegisterModules();
             
             ChartService chartService = new ChartService();
@@ -34,22 +38,53 @@ public class StockChartsMcpServer {
             TechnicalIndicatorTool indicatorTool = new TechnicalIndicatorTool(indicatorService);
             RatioTool ratioTool = new RatioTool();
             
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            String line;
-            
-            while ((line = reader.readLine()) != null) {
+            InputStream in = new BufferedInputStream(System.in);
+            OutputStream out = System.out;
+
+            while (true) {
+                System.err.println("Waiting for headers...");
+                Map<String, String> headers = readHeaders(in);
+                System.err.println("Headers received: " + headers);
+                if (headers == null) {
+                    System.err.println("EOF reached");
+                    break; // EOF
+                }
+                if (headers.isEmpty()) {
+                    // Ignore empty header block (e.g., stray newlines)
+                    continue;
+                }
+
+                String contentLengthValue = headers.getOrDefault("content-length", null);
+                if (contentLengthValue == null) {
+                    // No content length, cannot proceed; send error and continue
+                    writeError(out, "unknown", -32700, "Missing Content-Length header");
+                    continue;
+                }
+
+                int contentLength;
                 try {
-                    McpMessage request = objectMapper.readValue(line, McpMessage.class);
+                    contentLength = Integer.parseInt(contentLengthValue.trim());
+                } catch (NumberFormatException nfe) {
+                    writeError(out, "unknown", -32700, "Invalid Content-Length header");
+                    continue;
+                }
+
+                byte[] bodyBytes = readBody(in, contentLength);
+                if (bodyBytes == null) {
+                    break; // EOF while reading body
+                }
+
+                String body = new String(bodyBytes, StandardCharsets.UTF_8);
+                try {
+                    McpMessage request = objectMapper.readValue(body, McpMessage.class);
                     McpMessage response = handleRequest(request, chartTool, dataTool, indicatorTool, ratioTool);
-                    
+
                     if (response != null) {
-                        System.out.println(objectMapper.writeValueAsString(response));
-                        System.out.flush();
+                        writeResponse(out, response);
                     }
                 } catch (Exception e) {
                     McpMessage errorResponse = McpMessage.error("unknown", -32603, "Internal error: " + e.getMessage());
-                    System.out.println(objectMapper.writeValueAsString(errorResponse));
-                    System.out.flush();
+                    writeResponse(out, errorResponse);
                 }
             }
         } catch (IOException e) {
@@ -129,5 +164,70 @@ public class StockChartsMcpServer {
         }
         
         return McpMessage.error(request.getId(), -32601, "Method not found: " + method);
+    }
+
+    private static Map<String, String> readHeaders(InputStream in) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        int prev = -1, curr;
+        boolean seenCRLFCRLF = false;
+        while ((curr = in.read()) != -1) {
+            sb.append((char) curr);
+            int len = sb.length();
+            if (len >= 4 && sb.charAt(len - 4) == '\r' && sb.charAt(len - 3) == '\n' && sb.charAt(len - 2) == '\r' && sb.charAt(len - 1) == '\n') {
+                seenCRLFCRLF = true;
+                break;
+            }
+            // also allow \n\n as delimiter for robustness
+            if (len >= 2 && sb.charAt(len - 2) == '\n' && sb.charAt(len - 1) == '\n') {
+                seenCRLFCRLF = true;
+                break;
+            }
+            prev = curr;
+        }
+
+        if (!seenCRLFCRLF && sb.length() == 0) {
+            return null; // EOF with no data
+        }
+
+        String headerBlock = sb.toString();
+        String[] lines = headerBlock.replace("\r", "").split("\n");
+        Map<String, String> headers = new HashMap<>();
+        for (String line : lines) {
+            if (line.isEmpty()) continue;
+            int idx = line.indexOf(':');
+            if (idx > 0) {
+                String name = line.substring(0, idx).trim().toLowerCase();
+                String value = line.substring(idx + 1).trim();
+                headers.put(name, value);
+            }
+        }
+        // If no headers found (only blank lines), treat as EOF/ignore
+        if (headers.isEmpty()) return headers;
+        return headers;
+    }
+
+    private static byte[] readBody(InputStream in, int length) throws IOException {
+        byte[] buf = new byte[length];
+        int off = 0;
+        while (off < length) {
+            int r = in.read(buf, off, length - off);
+            if (r == -1) {
+                return null;
+            }
+            off += r;
+        }
+        return buf;
+    }
+
+    private static void writeResponse(OutputStream out, McpMessage response) throws IOException {
+        byte[] payload = objectMapper.writeValueAsBytes(response);
+        String header = "Content-Type: application/json\r\nContent-Length: " + payload.length + "\r\n\r\n";
+        out.write(header.getBytes(StandardCharsets.US_ASCII));
+        out.write(payload);
+        out.flush();
+    }
+
+    private static void writeError(OutputStream out, String id, int code, String message) throws IOException {
+        writeResponse(out, McpMessage.error(id, code, message));
     }
 }

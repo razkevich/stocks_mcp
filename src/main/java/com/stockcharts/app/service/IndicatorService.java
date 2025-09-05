@@ -1,11 +1,14 @@
 package com.stockcharts.app.service;
 
 import com.stockcharts.app.model.OhlcData;
+import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Service
 public class IndicatorService {
 
     public static class IndicatorValue {
@@ -38,6 +41,20 @@ public class IndicatorService {
         public double getMacd() { return macd; }
         public double getSignal() { return signal; }
         public double getHistogram() { return histogram; }
+    }
+
+    @Tool(description = "Calculate technical indicators like SMA, EMA, RSI, MACD for stock data")
+    public String calculateIndicator(String symbol, String indicator, Integer period) {
+        try {
+            // For now, return a mock response since we need actual stock data
+            // In a real implementation, you would fetch the data using PolygonService
+            if (period == null) period = 14;
+            
+            return String.format("Calculated %s for %s with period %d. This would return actual indicator values in a real implementation.", 
+                indicator.toUpperCase(), symbol, period);
+        } catch (Exception e) {
+            return "Error calculating indicator: " + e.getMessage();
+        }
     }
 
     public List<IndicatorValue> sma(List<OhlcData> data, int period) {

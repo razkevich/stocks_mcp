@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stockcharts.app.config.Config;
 import com.stockcharts.app.model.OhlcData;
+import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
@@ -17,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+@Service
 public class PolygonService {
     
     private static final String BASE_URL = "https://api.polygon.io";
@@ -83,6 +86,48 @@ public class PolygonService {
         return ohlcDataList;
     }
     
+    @Tool(description = "Get stock market data for a given symbol including OHLC data and current price")
+    public String getStockData(String symbol, String period) {
+        try {
+            // Parse period to determine the timeframe
+            String multiplier = "1";
+            String timespan = "day";
+            
+            // Calculate date range - default to last 30 days
+            LocalDate endDate = LocalDate.now();
+            LocalDate startDate = endDate.minusDays(30);
+            
+            if (period != null) {
+                switch (period.toUpperCase()) {
+                    case "1D":
+                        startDate = endDate.minusDays(1);
+                        timespan = "minute";
+                        multiplier = "5";
+                        break;
+                    case "1W":
+                        startDate = endDate.minusWeeks(1);
+                        break;
+                    case "1M":
+                        startDate = endDate.minusMonths(1);
+                        break;
+                    case "3M":
+                        startDate = endDate.minusMonths(3);
+                        break;
+                    case "1Y":
+                        startDate = endDate.minusYears(1);
+                        break;
+                }
+            }
+            
+            return getStockDataAsText(symbol, multiplier, timespan, 
+                startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                true, "asc", 50);
+        } catch (Exception e) {
+            return "Error retrieving stock data: " + e.getMessage();
+        }
+    }
+
     public String getStockDataAsText(String ticker, String multiplier, String timespan, 
                                    String from, String to, boolean adjusted, String sort, int limit) {
         try {

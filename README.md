@@ -87,8 +87,8 @@ To use with Codex CLI or other MCP clients, configure the server in your MCP set
 {
   "mcpServers": {
     "stockcharts": {
-      "command": "mvn",
-      "args": ["-q", "exec:java", "-Dexec.mainClass=com.stockcharts.app.StockChartsMcpServer"],
+      "command": "java",
+      "args": ["-jar", "target/stockcharts-app-1.0.0-shaded.jar"],
       "env": {
         "POLYGON_API_KEY": "your_polygon_api_key_here"
       },
@@ -98,4 +98,8 @@ To use with Codex CLI or other MCP clients, configure the server in your MCP set
 }
 ```
 
-Alternatively, build a shaded JAR and point Codex to `java -jar` (ask us to add the shade plugin if you prefer this option).
+Build the shaded JAR once before connecting:
+```
+mvn package -DskipTests
+```
+Running via `java -jar` ensures no extra stdout noise (which can break MCP framing) compared to running through `mvn exec`.
