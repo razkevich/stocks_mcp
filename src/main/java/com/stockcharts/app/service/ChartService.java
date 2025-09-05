@@ -22,6 +22,11 @@ import java.util.Date;
 
 public class ChartService {
 
+    static {
+        // Ensure charts render in environments without a display
+        System.setProperty("java.awt.headless", "true");
+    }
+
     public byte[] generateChart(ChartRequest request) throws IOException {
         JFreeChart chart = createOHLCChart(request);
         
@@ -37,9 +42,13 @@ public class ChartService {
     private JFreeChart createOHLCChart(ChartRequest request) {
         OHLCSeries series = new OHLCSeries("Stock Data");
         
+        double minLow = Double.POSITIVE_INFINITY;
+        double maxHigh = Double.NEGATIVE_INFINITY;
         for (OhlcData data : request.getOhlcData()) {
             Date date = Date.from(data.getDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
             series.add(new Day(date), data.getOpen(), data.getHigh(), data.getLow(), data.getClose());
+            if (data.getLow() < minLow) minLow = data.getLow();
+            if (data.getHigh() > maxHigh) maxHigh = data.getHigh();
         }
         
         OHLCSeriesCollection dataset = new OHLCSeriesCollection();
@@ -78,6 +87,17 @@ public class ChartService {
         // Format number axis to show currency
         NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
         rangeAxis.setNumberFormatOverride(NumberFormat.getCurrencyInstance());
+        // Auto-adjust range based on dataset min/max (with small headroom)
+        if (minLow != Double.POSITIVE_INFINITY && maxHigh != Double.NEGATIVE_INFINITY) {
+            double range = Math.max(1e-9, maxHigh - minLow);
+            double pad = range * 0.05; // 5% headroom
+            rangeAxis.setAutoRange(false);
+            rangeAxis.setLowerBound(minLow - pad);
+            rangeAxis.setUpperBound(maxHigh + pad);
+        } else {
+            // Fallback to auto if no data
+            rangeAxis.setAutoRange(true);
+        }
         
         return chart;
     }
