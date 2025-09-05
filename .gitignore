@@ -1,0 +1,27 @@
+# Build outputs
+target/
+out/
+
+# IDE/editor
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and reports
+*.log
+logs/
+
+# Local config (do not commit secrets)
+config/local.properties
+.env
+
+# Java
+*.class
+
