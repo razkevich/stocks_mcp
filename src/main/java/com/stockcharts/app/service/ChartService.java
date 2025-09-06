@@ -47,15 +47,13 @@ public class ChartService {
 
     @Tool(description = "Generate a comprehensive stock chart for a symbol or ratio with technical indicators. " +
           "Parameters: symbol (e.g., 'AAPL' or 'AAPL/SPY'), chartType ('candlestick'|'line'|'ohlc'), period ('1D'), " +
-          "startDate ('2025-08-01'), endDate ('2025-09-05'), " +
-          "indicators (comma-separated list: 'SMA:20:overlay,RSI:14:panel,MACD:12:panel'), " +
-          "fibonacciHigh, fibonacciLow (for Fibonacci retracements/extensions - use recent swing high/low values). " +
+          "startDate ('YYYY-MM-DD'), endDate ('YYYY-MM-DD'), " +
+          "indicators (comma-separated list: 'SMA:20:overlay,RSI:14:panel,MACD:12:panel'). " +
           "Indicators format: 'TYPE:PERIOD:DISPLAY' where DISPLAY is 'overlay' (same pane) or 'panel' (separate pane). " +
-          "Fibonacci levels: automatically draws 23.6%, 38.2%, 50%, 61.8%, 76.4% retracements and 127.2%, 161.8% extensions. " +
-          "Also draws internal, uninvalidated trend lines computed from upper/lower convex hulls of highs/lows. " +
+          "Includes internal support/resistance trendlines based on convex hulls of highs and lows. " +
           "Returns file path to generated PNG chart.")
     public String generateChart(String symbol, String chartType, String period, String startDate, String endDate,
-                                String indicators, Double fibonacciHigh, Double fibonacciLow) {
+                                String indicators) {
         try {
             ChartRequest request = new ChartRequest();
             request.setSymbol(symbol);
@@ -84,18 +82,8 @@ public class ChartService {
             }
             request.setOhlcData(stockData);
             
-            // Build internal trend lines from convex hull of highs/lows
+            // Build internal trend lines from convex hull of highs/lows (always on; no input required)
             java.util.List<LineData> lines = generateConvexHullTrendLines(stockData);
-            
-            // Add Fibonacci retracements and extensions if valid high/low provided (ignore zeros)
-            if (fibonacciHigh != null && fibonacciLow != null && fibonacciHigh != 0 && fibonacciLow != 0 && !fibonacciHigh.equals(fibonacciLow)) {
-                java.time.LocalDate chartStart = java.time.LocalDate.parse(startDate);
-                java.time.LocalDate chartEnd = java.time.LocalDate.parse(endDate);
-                // Normalize order: ensure high >= low
-                double high = Math.max(fibonacciHigh, fibonacciLow);
-                double low = Math.min(fibonacciHigh, fibonacciLow);
-                lines.addAll(generateFibonacciLines(chartStart, chartEnd, high, low));
-            }
             
             if (!lines.isEmpty()) {
                 request.setLines(lines);
@@ -119,6 +107,8 @@ public class ChartService {
             return "Error generating chart: " + e.getMessage();
         }
     }
+
+    // (Fibonacci functionality removed)
 
     // Compute internal trend lines using Lower/Upper Convex Hulls constructed from lows and highs.
     // Lower hull connects support extrema (lows) with segments that stay below all intervening lows.
@@ -378,6 +368,8 @@ public class ChartService {
             }
         }
     }
+
+    // (Removed: Fibonacci color palette helper)
     
     private java.util.List<IndicatorSpec> parseIndicators(String indicatorsArg) {
         java.util.List<IndicatorSpec> list = new java.util.ArrayList<>();
@@ -571,78 +563,5 @@ public class ChartService {
         }
         
         return ratioData;
-    }
-    
-    private java.util.List<LineData> generateFibonacciLines(java.time.LocalDate chartStart, java.time.LocalDate chartEnd, 
-                                                           double high, double low) {
-        java.util.List<LineData> fibLines = new java.util.ArrayList<>();
-        double range = high - low;
-        if (range <= 0) {
-            System.out.println("DEBUG: Skipping Fibonacci lines due to non-positive range: high=" + high + ", low=" + low);
-            return fibLines;
-        }
-        // Draw Fibonacci levels across the full visible chart for clarity
-        java.time.LocalDate fibStartDate = chartStart;
-        
-        // Fibonacci retracement levels with labels (extend only to the right)
-        double[] retracementLevels = {0.236, 0.382, 0.5, 0.618, 0.764};
-        String[] retracementColors = {"#FFD700", "#FFD700", "#FF6347", "#FF6347", "#9370DB"}; // Some colors can repeat
-        String[] retracementLabels = {"23.6%", "38.2%", "50.0%", "61.8%", "76.4%"};
-        
-        for (int i = 0; i < retracementLevels.length; i++) {
-            double level = high - (range * retracementLevels[i]);
-            LineData fibLine = new LineData(fibStartDate, chartEnd, level, level);
-            fibLine.setColor(retracementColors[i]);
-            fibLine.setStrokeWidth(1.5f);
-            fibLine.setDashed(true);  // Make Fibonacci lines dashed
-            fibLine.setLabel(retracementLabels[i]);
-            fibLines.add(fibLine);
-            System.out.println("DEBUG: Added Fibonacci retracement " + retracementLabels[i] + " at $" + level + " extending right from " + fibStartDate);
-        }
-        
-        // Fibonacci extension levels (extend only to the right)
-        double[] extensionLevels = {1.272, 1.618};
-        String[] extensionColors = {"#FF1493", "#FF1493"}; // Same color for extension group
-        String[] extensionLabels = {"127.2%", "161.8%"};
-        
-        for (int i = 0; i < extensionLevels.length; i++) {
-            double extensionDown = low - (range * (extensionLevels[i] - 1));
-            double extensionUp = high + (range * (extensionLevels[i] - 1));
-            
-            // Extension below
-            LineData fibExtensionDown = new LineData(fibStartDate, chartEnd, extensionDown, extensionDown);
-            fibExtensionDown.setColor(extensionColors[i]);
-            fibExtensionDown.setStrokeWidth(1.5f);
-            fibExtensionDown.setDashed(true);
-            fibExtensionDown.setLabel(extensionLabels[i] + " Ext");
-            fibLines.add(fibExtensionDown);
-            
-            // Extension above
-            LineData fibExtensionUp = new LineData(fibStartDate, chartEnd, extensionUp, extensionUp);
-            fibExtensionUp.setColor(extensionColors[i]);
-            fibExtensionUp.setStrokeWidth(1.5f);
-            fibExtensionUp.setDashed(true);
-            fibExtensionUp.setLabel(extensionLabels[i] + " Ext");
-            fibLines.add(fibExtensionUp);
-            
-            System.out.println("DEBUG: Added Fibonacci extension " + extensionLabels[i] + " at $" + extensionDown + " and $" + extensionUp + " extending right from " + fibStartDate);
-        }
-        
-        // Add 0% (high) and 100% (low) reference lines (full width)
-        LineData highLine = new LineData(fibStartDate, chartEnd, high, high);
-        highLine.setColor("#00FF00"); // Green for high
-        highLine.setStrokeWidth(2.0f);
-        highLine.setLabel("0% (High)");
-        fibLines.add(highLine);
-        
-        LineData lowLine = new LineData(fibStartDate, chartEnd, low, low);
-        lowLine.setColor("#FF0000"); // Red for low
-        lowLine.setStrokeWidth(2.0f);
-        lowLine.setLabel("100% (Low)");
-        fibLines.add(lowLine);
-        
-        System.out.println("DEBUG: Added Fibonacci reference lines - High: $" + high + ", Low: $" + low);
-        
-        return fibLines;
     }
 }
