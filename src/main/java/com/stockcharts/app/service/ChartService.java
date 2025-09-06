@@ -49,14 +49,13 @@ public class ChartService {
           "Parameters: symbol (e.g., 'AAPL' or 'AAPL/SPY'), chartType ('candlestick'|'line'|'ohlc'), period ('1D'), " +
           "startDate ('2025-08-01'), endDate ('2025-09-05'), " +
           "indicators (comma-separated list: 'SMA:20:overlay,RSI:14:panel,MACD:12:panel'), " +
-          "lineStartDate, lineEndDate, lineStartValue, lineEndValue (for custom trend lines), " +
           "fibonacciHigh, fibonacciLow (for Fibonacci retracements/extensions - use recent swing high/low values). " +
           "Indicators format: 'TYPE:PERIOD:DISPLAY' where DISPLAY is 'overlay' (same pane) or 'panel' (separate pane). " +
           "Fibonacci levels: automatically draws 23.6%, 38.2%, 50%, 61.8%, 76.4% retracements and 127.2%, 161.8% extensions. " +
+          "Also draws internal, uninvalidated trend lines computed from upper/lower convex hulls of highs/lows. " +
           "Returns file path to generated PNG chart.")
-    public String generateChart(String symbol, String chartType, String period, String startDate, String endDate, 
-                               String indicators, String lineStartDate, String lineEndDate, 
-                               Double lineStartValue, Double lineEndValue, Double fibonacciHigh, Double fibonacciLow) {
+    public String generateChart(String symbol, String chartType, String period, String startDate, String endDate,
+                                String indicators, Double fibonacciHigh, Double fibonacciLow) {
         try {
             ChartRequest request = new ChartRequest();
             request.setSymbol(symbol);
@@ -85,54 +84,8 @@ public class ChartService {
             }
             request.setOhlcData(stockData);
             
-            // Add custom lines if coordinates provided
-            java.util.List<LineData> lines = new java.util.ArrayList<>();
-            
-            // Handle horizontal line from single point (ignore zeros as 'no line')
-            if (lineStartValue != null && lineStartValue != 0 && (lineEndValue == null || lineEndValue == 0)) {
-                LineData horizontalLine = new LineData(
-                    java.time.LocalDate.parse(startDate),
-                    java.time.LocalDate.parse(endDate),
-                    lineStartValue,
-                    lineStartValue
-                );
-                horizontalLine.setColor("#FF0000"); // Red line
-                horizontalLine.setStrokeWidth(2.0f);
-                lines.add(horizontalLine);
-                System.out.println("DEBUG: Added horizontal line at $" + lineStartValue);
-            }
-
-            // Handle two-point line (extend to chart boundaries)
-            if (lineStartValue != null && lineStartValue != 0 && lineEndValue != null && lineEndValue != 0) {
-                // Calculate slope and extend line to chart boundaries
-                java.time.LocalDate chartStart = java.time.LocalDate.parse(startDate);
-                java.time.LocalDate chartEnd = java.time.LocalDate.parse(endDate);
-                
-                java.time.LocalDate pointStart = lineStartDate != null ? java.time.LocalDate.parse(lineStartDate) : chartStart;
-                java.time.LocalDate pointEnd = lineEndDate != null ? java.time.LocalDate.parse(lineEndDate) : chartEnd;
-                
-                // Calculate slope
-                long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(pointStart, pointEnd);
-                double slope = daysBetween != 0 ? (lineEndValue - lineStartValue) / daysBetween : 0;
-                
-                // Extend to chart boundaries
-                long daysFromChartStart = java.time.temporal.ChronoUnit.DAYS.between(chartStart, pointStart);
-                long daysToChartEnd = java.time.temporal.ChronoUnit.DAYS.between(pointEnd, chartEnd);
-                
-                double extendedStartValue = lineStartValue - (slope * daysFromChartStart);
-                double extendedEndValue = lineEndValue + (slope * daysToChartEnd);
-                
-                LineData extendedLine = new LineData(
-                    chartStart,
-                    chartEnd,
-                    extendedStartValue,
-                    extendedEndValue
-                );
-                extendedLine.setColor("#FF6B35"); // Orange line
-                extendedLine.setStrokeWidth(2.0f);
-                lines.add(extendedLine);
-                System.out.println("DEBUG: Added extended line from " + chartStart + " ($" + extendedStartValue + ") to " + chartEnd + " ($" + extendedEndValue + ")");
-            }
+            // Build internal trend lines from convex hull of highs/lows
+            java.util.List<LineData> lines = generateConvexHullTrendLines(stockData);
             
             // Add Fibonacci retracements and extensions if valid high/low provided (ignore zeros)
             if (fibonacciHigh != null && fibonacciLow != null && fibonacciHigh != 0 && fibonacciLow != 0 && !fibonacciHigh.equals(fibonacciLow)) {
@@ -165,6 +118,119 @@ public class ChartService {
             e.printStackTrace();
             return "Error generating chart: " + e.getMessage();
         }
+    }
+
+    // Compute internal trend lines using Lower/Upper Convex Hulls constructed from lows and highs.
+    // Lower hull connects support extrema (lows) with segments that stay below all intervening lows.
+    // Upper hull connects resistance extrema (highs) with segments that stay above all intervening highs.
+    private java.util.List<LineData> generateConvexHullTrendLines(java.util.List<OhlcData> data) {
+        java.util.List<LineData> lines = new java.util.ArrayList<>();
+        if (data == null || data.size() < 3) return lines;
+
+        // Build arrays of points: (x=index, y=value, date=LocalDate)
+        java.util.List<Point> lowPoints = new java.util.ArrayList<>(data.size());
+        java.util.List<Point> highPoints = new java.util.ArrayList<>(data.size());
+        for (int i = 0; i < data.size(); i++) {
+            OhlcData d = data.get(i);
+            lowPoints.add(new Point(i, d.getLow(), d.getDate()));
+            highPoints.add(new Point(i, d.getHigh(), d.getDate()));
+        }
+
+        java.util.List<Point> lowerHull = monotoneChainLower(lowPoints);
+        java.util.List<Point> upperHull = monotoneChainUpper(highPoints);
+
+        // Extend each hull segment to the right edge (last candle),
+        // and skip painting the final segment if it uses the last candle.
+        int lastIndex = data.size() - 1;
+        java.time.LocalDate lastDate = data.get(lastIndex).getDate();
+
+        // Lower hull (support) in green
+        for (int i = 0; i + 1 < lowerHull.size(); i++) {
+            Point a = lowerHull.get(i);
+            Point b = lowerHull.get(i + 1);
+            // Skip if this segment uses the last candle as an endpoint
+            if (a.x == lastIndex || b.x == lastIndex) {
+                continue;
+            }
+            // Do not draw segments that span fewer than 3 candles
+            // Assumption: span is measured by index gap between endpoints
+            // (i.e., require at least 3-bar separation: b.x - a.x >= 3)
+            int gap = b.x - a.x;
+            if (gap < 3) {
+                continue;
+            }
+            // Extend from point 'a' to the last index using the segment slope
+            double dx = (double) (b.x - a.x);
+            if (dx == 0) continue; // defensive
+            double slope = (b.y - a.y) / dx;
+            double yEnd = a.y + slope * (lastIndex - a.x);
+            LineData line = new LineData(a.date, lastDate, a.y, yEnd);
+            line.setColor("#2ECC71"); // green
+            line.setStrokeWidth(2.0f);
+            lines.add(line);
+        }
+
+        // Upper hull (resistance) in red
+        for (int i = 0; i + 1 < upperHull.size(); i++) {
+            Point a = upperHull.get(i);
+            Point b = upperHull.get(i + 1);
+            // Skip if this segment uses the last candle as an endpoint
+            if (a.x == lastIndex || b.x == lastIndex) {
+                continue;
+            }
+            // Do not draw segments that span fewer than 3 candles
+            int gap = b.x - a.x;
+            if (gap < 3) {
+                continue;
+            }
+            double dx = (double) (b.x - a.x);
+            if (dx == 0) continue; // defensive
+            double slope = (b.y - a.y) / dx;
+            double yEnd = a.y + slope * (lastIndex - a.x);
+            LineData line = new LineData(a.date, lastDate, a.y, yEnd);
+            line.setColor("#E74C3C"); // red
+            line.setStrokeWidth(2.0f);
+            lines.add(line);
+        }
+
+        return lines;
+    }
+
+    // Helper data structure
+    private static class Point {
+        final int x; // index in time order
+        final double y; // value (low/high)
+        final java.time.LocalDate date;
+        Point(int x, double y, java.time.LocalDate date) { this.x = x; this.y = y; this.date = date; }
+    }
+
+    // Cross product (OA x OB)
+    private static double cross(Point o, Point a, Point b) {
+        return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    }
+
+    // Build lower convex hull for monotone increasing x
+    private static java.util.List<Point> monotoneChainLower(java.util.List<Point> pts) {
+        java.util.List<Point> hull = new java.util.ArrayList<>();
+        for (Point p : pts) {
+            while (hull.size() >= 2 && cross(hull.get(hull.size() - 2), hull.get(hull.size() - 1), p) <= 0) {
+                hull.remove(hull.size() - 1);
+            }
+            hull.add(p);
+        }
+        return hull;
+    }
+
+    // Build upper convex hull for monotone increasing x
+    private static java.util.List<Point> monotoneChainUpper(java.util.List<Point> pts) {
+        java.util.List<Point> hull = new java.util.ArrayList<>();
+        for (Point p : pts) {
+            while (hull.size() >= 2 && cross(hull.get(hull.size() - 2), hull.get(hull.size() - 1), p) >= 0) {
+                hull.remove(hull.size() - 1);
+            }
+            hull.add(p);
+        }
+        return hull;
     }
 
     public byte[] generateChartBytes(ChartRequest request) throws IOException {
