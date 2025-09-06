@@ -73,7 +73,11 @@ public class PolygonService {
         JsonNode results = root.get("results");
         for (JsonNode result : results) {
             long timestamp = result.get("t").asLong();
-            LocalDate date = LocalDate.ofEpochDay(timestamp / (1000 * 60 * 60 * 24));
+            // Polygon returns epoch millis for the bar start; convert accurately to LocalDate
+            java.time.LocalDate date = java.time.Instant
+                .ofEpochMilli(timestamp)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDate();
             
             double open = result.get("o").asDouble();
             double high = result.get("h").asDouble();
@@ -86,53 +90,75 @@ public class PolygonService {
         return ohlcDataList;
     }
     
-    @Tool(description = "Retrieve detailed OHLC stock market data for a symbol or ratio. " +
-          "Supports individual stocks (e.g., 'AAPL', 'MSFT') and ratios (e.g., 'AAPL/SPY' for relative performance analysis). " +
-          "Parameters: symbol ('AAPL' or 'AAPL/SPY'), period ('1D' for daily data). " +
-          "Returns formatted table with Date, Open, High, Low, Close prices for recent trading sessions.")
-    public String getStockData(String symbol, String period) {
+    @Tool(description = "Retrieve OHLC data for a symbol or ratio with optional date range and limit. " +
+          "Supports individual symbols (e.g., 'AAPL') and ratios (e.g., 'AAPL/SPY'). " +
+          "Parameters: symbol ('AAPL' or 'AAPL/SPY'); period ('1D','1W','1M','3M','1Y'); " +
+          "startDate ('YYYY-MM-DD') and endDate ('YYYY-MM-DD') override period if provided; " +
+          "limit (max bars to return; default larger for full history). " +
+          "Returns a formatted table: Date, Open, High, Low, Close.")
+    public String getStockData(String symbol, String period, String startDate, String endDate, Integer limit) {
         try {
             // Parse period to determine the timeframe
             String multiplier = "1";
             String timespan = "day";
             
-            // Calculate date range - default to last 30 days
-            LocalDate endDate = LocalDate.now();
-            LocalDate startDate = endDate.minusDays(30);
+            // Calculate date range defaults
+            LocalDate computedEnd = LocalDate.now();
+            LocalDate computedStart = computedEnd.minusMonths(12); // default to last 1Y
             
-            if (period != null) {
+            if (period != null && (startDate == null && endDate == null)) {
                 switch (period.toUpperCase()) {
                     case "1D":
-                        startDate = endDate.minusDays(1);
+                        computedStart = computedEnd.minusDays(1);
                         timespan = "minute";
                         multiplier = "5";
                         break;
                     case "1W":
-                        startDate = endDate.minusWeeks(1);
+                        computedStart = computedEnd.minusWeeks(1);
                         break;
                     case "1M":
-                        startDate = endDate.minusMonths(1);
+                        computedStart = computedEnd.minusMonths(1);
                         break;
                     case "3M":
-                        startDate = endDate.minusMonths(3);
+                        computedStart = computedEnd.minusMonths(3);
                         break;
                     case "1Y":
-                        startDate = endDate.minusYears(1);
+                        computedStart = computedEnd.minusYears(1);
                         break;
                 }
             }
+
+            // Override with explicit dates if provided
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            if (startDate != null) {
+                computedStart = LocalDate.parse(startDate, fmt);
+            }
+            if (endDate != null) {
+                computedEnd = LocalDate.parse(endDate, fmt);
+            }
+            if (startDate != null && endDate == null) {
+                // default end to today if only start provided
+                computedEnd = LocalDate.now();
+            }
+            if (endDate != null && startDate == null) {
+                // default start to 1Y before end if only end provided
+                computedStart = computedEnd.minusYears(1);
+            }
+
+            // Determine limit
+            int effectiveLimit = (limit != null && limit > 0) ? limit : ("minute".equals(timespan) ? 5000 : 50000);
             
             // Check if this is a ratio (contains "/")
             if (symbol.contains("/")) {
                 return getRatioDataAsText(symbol, multiplier, timespan, 
-                    startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
-                    endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
-                    true, "asc", 50);
+                    computedStart.format(fmt),
+                    computedEnd.format(fmt),
+                    true, "asc", effectiveLimit);
             } else {
                 return getStockDataAsText(symbol, multiplier, timespan, 
-                    startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
-                    endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
-                    true, "asc", 50);
+                    computedStart.format(fmt),
+                    computedEnd.format(fmt),
+                    true, "asc", effectiveLimit);
             }
         } catch (Exception e) {
             return "Error retrieving stock data: " + e.getMessage();

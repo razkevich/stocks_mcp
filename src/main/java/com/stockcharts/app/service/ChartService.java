@@ -88,8 +88,8 @@ public class ChartService {
             // Add custom lines if coordinates provided
             java.util.List<LineData> lines = new java.util.ArrayList<>();
             
-            // Handle horizontal line from single point
-            if (lineStartValue != null && (lineEndValue == null || lineEndValue == 0)) {
+            // Handle horizontal line from single point (ignore zeros as 'no line')
+            if (lineStartValue != null && lineStartValue != 0 && (lineEndValue == null || lineEndValue == 0)) {
                 LineData horizontalLine = new LineData(
                     java.time.LocalDate.parse(startDate),
                     java.time.LocalDate.parse(endDate),
@@ -101,9 +101,9 @@ public class ChartService {
                 lines.add(horizontalLine);
                 System.out.println("DEBUG: Added horizontal line at $" + lineStartValue);
             }
-            
+
             // Handle two-point line (extend to chart boundaries)
-            if (lineStartValue != null && lineEndValue != null && lineEndValue != 0) {
+            if (lineStartValue != null && lineStartValue != 0 && lineEndValue != null && lineEndValue != 0) {
                 // Calculate slope and extend line to chart boundaries
                 java.time.LocalDate chartStart = java.time.LocalDate.parse(startDate);
                 java.time.LocalDate chartEnd = java.time.LocalDate.parse(endDate);
@@ -134,11 +134,14 @@ public class ChartService {
                 System.out.println("DEBUG: Added extended line from " + chartStart + " ($" + extendedStartValue + ") to " + chartEnd + " ($" + extendedEndValue + ")");
             }
             
-            // Add Fibonacci retracements and extensions if high/low provided
-            if (fibonacciHigh != null && fibonacciLow != null) {
+            // Add Fibonacci retracements and extensions if valid high/low provided (ignore zeros)
+            if (fibonacciHigh != null && fibonacciLow != null && fibonacciHigh != 0 && fibonacciLow != 0 && !fibonacciHigh.equals(fibonacciLow)) {
                 java.time.LocalDate chartStart = java.time.LocalDate.parse(startDate);
                 java.time.LocalDate chartEnd = java.time.LocalDate.parse(endDate);
-                lines.addAll(generateFibonacciLines(chartStart, chartEnd, fibonacciHigh, fibonacciLow));
+                // Normalize order: ensure high >= low
+                double high = Math.max(fibonacciHigh, fibonacciLow);
+                double low = Math.min(fibonacciHigh, fibonacciLow);
+                lines.addAll(generateFibonacciLines(chartStart, chartEnd, high, low));
             }
             
             if (!lines.isEmpty()) {
@@ -273,17 +276,40 @@ public class ChartService {
                 lineColor = Color.decode(lineColors[i % lineColors.length]);
             }
             
+            // Create stroke based on dashed property
+            BasicStroke stroke;
+            if (line.isDashed()) {
+                float[] dashPattern = {5.0f, 5.0f}; // 5 pixels on, 5 pixels off
+                stroke = new BasicStroke(line.getStrokeWidth(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 0, dashPattern, 0);
+            } else {
+                stroke = new BasicStroke(line.getStrokeWidth(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+            }
+            
             XYLineAnnotation annotation = new XYLineAnnotation(
                     startDay.getMiddleMillisecond(),
                     line.getStartValue(),
                     endDay.getMiddleMillisecond(),
                     line.getEndValue(),
-                    new BasicStroke(line.getStrokeWidth(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND),
+                    stroke,
                     lineColor
             );
             
             System.out.println("DEBUG: Adding line annotation from " + startDay.getMiddleMillisecond() + "," + line.getStartValue() + " to " + endDay.getMiddleMillisecond() + "," + line.getEndValue() + " with color " + lineColor);
             plot.addAnnotation(annotation);
+            
+            // Add text label if present
+            if (line.getLabel() != null && !line.getLabel().trim().isEmpty()) {
+                org.jfree.chart.annotations.XYTextAnnotation textAnnotation = new org.jfree.chart.annotations.XYTextAnnotation(
+                    line.getLabel(),
+                    endDay.getMiddleMillisecond(), // Position at end of line
+                    line.getEndValue()
+                );
+                textAnnotation.setFont(new Font("SansSerif", Font.BOLD, 10));
+                textAnnotation.setPaint(lineColor);
+                textAnnotation.setTextAnchor(org.jfree.chart.ui.TextAnchor.BOTTOM_LEFT);
+                plot.addAnnotation(textAnnotation);
+                System.out.println("DEBUG: Added label '" + line.getLabel() + "' at $" + line.getEndValue());
+            }
         }
     }
     
@@ -485,52 +511,68 @@ public class ChartService {
                                                            double high, double low) {
         java.util.List<LineData> fibLines = new java.util.ArrayList<>();
         double range = high - low;
+        if (range <= 0) {
+            System.out.println("DEBUG: Skipping Fibonacci lines due to non-positive range: high=" + high + ", low=" + low);
+            return fibLines;
+        }
+        // Draw Fibonacci levels across the full visible chart for clarity
+        java.time.LocalDate fibStartDate = chartStart;
         
-        // Fibonacci retracement levels
+        // Fibonacci retracement levels with labels (extend only to the right)
         double[] retracementLevels = {0.236, 0.382, 0.5, 0.618, 0.764};
-        String[] retracementColors = {"#FFD700", "#FF8C00", "#FF6347", "#9370DB", "#20B2AA"};
+        String[] retracementColors = {"#FFD700", "#FFD700", "#FF6347", "#FF6347", "#9370DB"}; // Some colors can repeat
+        String[] retracementLabels = {"23.6%", "38.2%", "50.0%", "61.8%", "76.4%"};
         
         for (int i = 0; i < retracementLevels.length; i++) {
             double level = high - (range * retracementLevels[i]);
-            LineData fibLine = new LineData(chartStart, chartEnd, level, level);
+            LineData fibLine = new LineData(fibStartDate, chartEnd, level, level);
             fibLine.setColor(retracementColors[i]);
             fibLine.setStrokeWidth(1.5f);
+            fibLine.setDashed(true);  // Make Fibonacci lines dashed
+            fibLine.setLabel(retracementLabels[i]);
             fibLines.add(fibLine);
-            System.out.println("DEBUG: Added Fibonacci retracement " + (retracementLevels[i] * 100) + "% at $" + level);
+            System.out.println("DEBUG: Added Fibonacci retracement " + retracementLabels[i] + " at $" + level + " extending right from " + fibStartDate);
         }
         
-        // Fibonacci extension levels
+        // Fibonacci extension levels (extend only to the right)
         double[] extensionLevels = {1.272, 1.618};
-        String[] extensionColors = {"#FF1493", "#8A2BE2"};
+        String[] extensionColors = {"#FF1493", "#FF1493"}; // Same color for extension group
+        String[] extensionLabels = {"127.2%", "161.8%"};
         
         for (int i = 0; i < extensionLevels.length; i++) {
             double extensionDown = low - (range * (extensionLevels[i] - 1));
             double extensionUp = high + (range * (extensionLevels[i] - 1));
             
             // Extension below
-            LineData fibExtensionDown = new LineData(chartStart, chartEnd, extensionDown, extensionDown);
+            LineData fibExtensionDown = new LineData(fibStartDate, chartEnd, extensionDown, extensionDown);
             fibExtensionDown.setColor(extensionColors[i]);
             fibExtensionDown.setStrokeWidth(1.5f);
+            fibExtensionDown.setDashed(true);
+            fibExtensionDown.setLabel(extensionLabels[i] + " Ext");
             fibLines.add(fibExtensionDown);
             
             // Extension above
-            LineData fibExtensionUp = new LineData(chartStart, chartEnd, extensionUp, extensionUp);
+            LineData fibExtensionUp = new LineData(fibStartDate, chartEnd, extensionUp, extensionUp);
             fibExtensionUp.setColor(extensionColors[i]);
             fibExtensionUp.setStrokeWidth(1.5f);
+            fibExtensionUp.setDashed(true);
+            fibExtensionUp.setLabel(extensionLabels[i] + " Ext");
             fibLines.add(fibExtensionUp);
             
-            System.out.println("DEBUG: Added Fibonacci extension " + (extensionLevels[i] * 100) + "% at $" + extensionDown + " and $" + extensionUp);
+            System.out.println("DEBUG: Added Fibonacci extension " + extensionLabels[i] + " at $" + extensionDown + " and $" + extensionUp + " extending right from " + fibStartDate);
         }
         
-        // Add 0% (high) and 100% (low) reference lines
-        LineData highLine = new LineData(chartStart, chartEnd, high, high);
+        // Add 0% (high) and 100% (low) reference lines (full width)
+        LineData highLine = new LineData(fibStartDate, chartEnd, high, high);
         highLine.setColor("#00FF00"); // Green for high
         highLine.setStrokeWidth(2.0f);
+        highLine.setLabel("0% (High)");
         fibLines.add(highLine);
         
-        LineData lowLine = new LineData(chartStart, chartEnd, low, low);
+        LineData lowLine = new LineData(fibStartDate, chartEnd, low, low);
         lowLine.setColor("#FF0000"); // Red for low
         lowLine.setStrokeWidth(2.0f);
+        lowLine.setLabel("100% (Low)");
         fibLines.add(lowLine);
         
         System.out.println("DEBUG: Added Fibonacci reference lines - High: $" + high + ", Low: $" + low);

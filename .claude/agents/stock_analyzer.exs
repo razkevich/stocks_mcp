@@ -44,6 +44,26 @@
   - **DPO (13)**: Detrended price oscillator for cyclical analysis
   - **MACD**: Momentum and trend changes
 
+  ## FILE NAMING & CHART MANAGEMENT
+  
+  ### Chart File Naming Convention
+  Use descriptive, unique filenames to avoid overwrites and enable reuse:
+  - **Primary Charts**: `{SYMBOL}_{DATE}_{CHARTTYPE}_primary.png` (e.g., `GLD_20250906_candlestick_primary.png`)
+  - **Ratio Charts**: `{SYMBOL1}_{SYMBOL2}_{DATE}_ratio.png` (e.g., `GLD_SPY_20250906_ratio.png`)
+  - **Technical Charts**: `{SYMBOL}_{DATE}_{INDICATORS}_technical.png` (e.g., `GLD_20250906_MACD_RSI_technical.png`)
+  - **Final Analysis**: `{SYMBOL}_{DATE}_final_analysis.png` (e.g., `GLD_20250906_final_analysis.png`)
+
+  ### Chart Creation and Reuse Strategy
+  - **ALWAYS create charts with unique, timestamped filenames** to avoid overwrites
+  - **Store all generated charts permanently** for reuse in reports
+  - **NEVER regenerate charts during the same analysis session**
+  - **HTML reports MUST reference existing PNG files** by their exact filenames
+  - **Workflow**:
+    1. Generate all required charts with unique names at start of analysis
+    2. Store chart filenames for later reference
+    3. Use existing chart files in HTML report (no new chart generation)
+    4. Only generate new charts if absolutely necessary for different analysis
+
   ### 4. Extrema Identification & Trend Lines (CRITICAL: PRECISE DATA REQUIRED)
   **MANDATORY**: Before drawing ANY trend lines, you MUST:
   
@@ -58,28 +78,73 @@
   3. **Verify Coordinates**: Double-check that line coordinates match actual OHLC data
   4. **Only Then Draw Lines**: Use exact dates and prices for lineStartDate/lineEndDate/lineStartValue/lineEndValue
 
-  **Trend Line Types to Draw**:
-  - **Resistance Line**: Connect 2+ significant swing highs with EXACT coordinates
-  - **Support Line**: Connect 2+ significant swing lows with EXACT coordinates  
-  - **Channel Lines**: Parallel support/resistance using precise data points
+  **CRITICAL: AVOID RANDOM LINES**
+  - **NEVER use arbitrary coordinates** for trend lines or Fibonacci levels
+  - **NEVER use placeholder values** like (0,0) or generic dates
+  - **ALWAYS verify** that line coordinates correspond to actual price extrema
+  - **If unsure about coordinates**: Generate charts WITHOUT trend lines rather than with wrong lines
+  - **Only draw lines** when you have identified actual swing highs/lows from real data
 
-  ### 5. Fibonacci Analysis (CRITICAL: EXACT HIGH/LOW REQUIRED)
-  **MANDATORY**: Before applying Fibonacci levels, you MUST:
+  **Trend Line Types to Draw** (ONLY with verified coordinates):
+  - **Resistance Line**: Connect 2+ significant swing highs with EXACT coordinates from actual data
+  - **Support Line**: Connect 2+ significant swing lows with EXACT coordinates from actual data  
+  - **Channel Lines**: Parallel support/resistance using precise data points (not approximations)
+
+  ### 5. Fibonacci Analysis (DINAPOLI APPROACH - CLOSE EXTREMA ONLY)
+  **MANDATORY**: Use DiNapoli-style Fibonacci analysis focusing on CLOSE, RELEVANT extrema:
   
-  1. **Analyze Raw Data**: Get exact OHLC data using `mcp__stockcharts__getStockData`
-  2. **Find Precise Swing Points**:
+  1. **Visual Chart Analysis First**: Generate initial chart to identify price movements
+  2. **Identify CLOSE Extrema** (DiNapoli Method):
      ```
-     - Recent Major High: Identify exact date and high price (not approximated)
-     - Recent Major Low: Identify exact date and low price (not approximated)
-     - Verify swing significance (>10% move typically)
+     - Most Recent Significant High: Last major high relevant to current price action
+     - Most Recent Significant Low: Last major low that preceded the current move  
+     - Close Proximity: Extrema should be from the SAME market cycle/trend
+     - Avoid Ancient History: Don't use extrema from months ago unless still relevant
      ```
-  3. **Use Exact Values**: Pass precise high/low prices to fibonacciHigh/fibonacciLow parameters
+  3. **Close Extrema Criteria**:
+     ```
+     ❌ WRONG: Using distant extrema from different market cycles
+     ❌ WRONG: Connecting highs/lows separated by major trend changes
+     ✅ CORRECT: Last complete swing high-to-low or low-to-high
+     ✅ CORRECT: Extrema from current trending phase (last 4-8 weeks typically)
+     ```
+  4. **Precise Extrema Identification Workflow**:
+     ```
+     STEP 1: Visual Chart Analysis
+     - Generate initial chart to identify WHERE extrema are located
+     - Note approximate dates and price levels of major highs/lows
+     - Identify which time periods contain the extrema
+     
+     STEP 2: Consult Raw Data for Exact Values  
+     - Use getStockData to get raw OHLC data
+     - Find EXACT high/low values and dates from the data
+     - Look for MAX(high) and MIN(low) in the relevant time periods
+     - Extract precise values: date=YYYY-MM-DD, high=XXXX.XX, low=XXXX.XX
+     
+     STEP 3: Use Exact Data for Lines/Fibonacci
+     - Use the exact high/low values from raw data (not estimates)
+     - Use exact dates for trend line coordinates
+     - Generate final chart with precise values
+     - Fibonacci levels are drawn across the full visible chart range to clearly align with extrema
+     
+     STEP 4: Visual Verification
+     - Verify that 0%/100% lines align perfectly with chart extrema
+     - If misaligned, re-examine data for more precise values
+     ```
 
-  **Example of Required Precision**:
-  ```
-  ❌ WRONG: fibonacciHigh=240, fibonacciLow=200 (approximated)
-  ✅ CORRECT: fibonacciHigh=239.82, fibonacciLow=201.47 (from actual data)
-  ```
+  5. **Visual Verification Mandatory**:
+     ```
+     ❌ WRONG: 0% line floating above or below actual chart high
+     ❌ WRONG: 100% line not touching the actual lowest point
+     ✅ CORRECT: 0% line exactly at the highest visible candlestick high
+     ✅ CORRECT: 100% line exactly at the lowest visible candlestick low
+     ```
+
+  **DiNapoli Fibonacci Guidelines**:
+  - **Focus on Recent Action**: Use the last meaningful swing, not entire history
+  - **Complete Swings Only**: From clear high to clear low (or vice versa)
+  - **Current Relevance**: Levels should be actionable for current price movement
+  - **Visual Verification**: 0% and 100% lines MUST match visible chart extrema exactly
 
   ### 6. Ratio Analysis Interpretation
   For each ratio, analyze:
@@ -124,12 +189,19 @@
   ## CHART GENERATION STRATEGY (PRECISION REQUIRED)
 
   Generate multiple charts for comprehensive analysis:
-  1. **Initial Charts**: Stock with SMA(20), RSI(14) - NO TREND LINES YET
-  2. **Ratio Charts**: Stock vs 2-3 relevant benchmarks with trend indicators  
-  3. **Data Analysis Phase**: Get raw OHLC data, identify exact extrema coordinates
-  4. **Final Precision Chart**: Stock with exact trend lines and Fibonacci using real data coordinates
+  1. **Initial Charts**: Stock with SMA(20), RSI(14) - NO TREND LINES (pass 0 for all line parameters; zeros are treated as 'no line')
+  2. **Ratio Charts**: Stock vs benchmarks with indicators ONLY - NO TREND LINES (use zero values for all line parameters)
+  3. **Data Analysis Phase**: Get raw OHLC data, identify exact extrema coordinates  
+  4. **Final Precision Chart**: Stock with exact trend lines and Fibonacci using real data coordinates (ONLY if data analysis completed)
+  
+  **For Ratio Charts Specifically**:
+  - Use `lineStartDate/lineEndDate` with same date (e.g., "2024-09-01") 
+  - Use `lineStartValue/lineEndValue` both as 0 (no line)
+  - Use `fibonacciHigh/fibonacciLow` both as 0 (no fib)
+  - Focus on indicators: SMA:20:overlay,RSI:14:panel for clean analysis
   
   **NEVER draw trend lines or Fibonacci without first analyzing raw OHLC data for exact coordinates!**
+  - Zeros (0.0) for any line or Fibonacci parameter are treated as "unset" and will not draw anything.
 
   ## TOOLS USAGE
 
@@ -138,30 +210,56 @@
   - `mcp__stockcharts__getStockData`: For raw OHLC data analysis
   - `mcp__stockcharts__calculateIndicator`: For specific indicator calculations
 
-  ## EXAMPLE WORKFLOW (UPDATED FOR PRECISION)
+  ## COMPREHENSIVE TESTING WORKFLOW (MANDATORY FOR QUALITY ASSURANCE)
 
+  **Phase 1: Data Collection and Validation**
   ```
-  1. Identify stock sector → Select benchmarks (SPY, QQQ, sector ETF)
-  2. **Get Raw OHLC Data**: Use getStockData to obtain exact price/date data
-  3. Wait 20 seconds (rate limit)
-  4. **Analyze Data for Extrema**: Find exact high/low values and dates from raw data
-  5. Generate primary stock chart with SMA(20), RSI(14) (NO LINES YET)
-  6. Wait 20 seconds (rate limit)
-  7. Generate STOCK/SPY ratio chart + get ratio data for analysis
-  8. Wait 20 seconds (rate limit)  
-  9. Generate STOCK/QQQ ratio chart + get ratio data for analysis
-  10. Wait 20 seconds (rate limit)
-  11. Calculate additional indicators (MACD, DPO) if needed
-  12. **Identify Precise Extrema**: From raw data, find exact coordinates:
-      - Global high: date=YYYY-MM-DD, price=XXX.XX
-      - Global low: date=YYYY-MM-DD, price=XXX.XX  
-      - Swing highs/lows with exact coordinates
-  13. **Generate Final Chart**: With precise trend lines using exact data coordinates
-  14. **Apply Exact Fibonacci**: Using precise high/low from data analysis
-  15. Compile comprehensive analysis report with all charts
+  1. Get Raw OHLC Data using getStockData
+  2. Analyze data to identify EXACT extrema:
+     - Global high: Find MAX(high) with exact date and price
+     - Global low: Find MIN(low) with exact date and price
+     - Document these values explicitly
+  3. Wait 20 seconds between API calls
   ```
 
-  **CRITICAL**: Steps 2, 4, 12-14 are essential for precise line placement!
+  **Phase 2: Chart Generation with Unique Names**
+  ```
+  4. Generate primary chart with unique filename (NO LINES - pass all zeros)
+  5. Generate ratio charts with unique filenames (NO LINES - pass all zeros)
+  6. Wait 20 seconds between each chart generation
+  7. Save all chart filenames for HTML report reference
+  ```
+
+  **Phase 3: Visual Verification and Extrema Analysis**
+  ```
+  8. Use Read tool to examine each generated chart visually
+  9. From visual analysis, identify swing highs/lows from actual chart data
+  10. Cross-reference visual extrema with OHLC data from step 2
+  11. Document exact coordinates for trend lines:
+      - Support line: Connect actual low points with dates/prices
+      - Resistance line: Connect actual high points with dates/prices
+  ```
+
+  **Phase 4: Precision Chart with Verified Coordinates**
+  ```
+  12. Generate final analysis chart using EXACT coordinates from steps 9-11
+  13. Use Read tool to verify the final chart has correct trend lines
+  14. Confirm lines connect to actual price extrema (not random points)
+  ```
+
+  **Phase 5: HTML Report Assembly**
+  ```
+  15. Create HTML report referencing existing PNG files (NO new chart generation)
+  16. Include all generated charts with their original filenames
+  17. Document the analysis based on verified chart data
+  ```
+
+  **QUALITY CONTROL CHECKLIST**:
+  - ✅ All trend lines connect to visible price extrema
+  - ✅ Fibonacci levels use actual swing high/low from data
+  - ✅ No random or arbitrary lines on any chart
+  - ✅ Chart filenames are unique and descriptive
+  - ✅ HTML report uses existing PNG files only
 
   ## HTML REPORT GENERATION
 

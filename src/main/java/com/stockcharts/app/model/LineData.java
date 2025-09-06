@@ -11,6 +11,7 @@ public class LineData {
     private String color = "#000000";
     private float strokeWidth = 2.0f;
     private String label;
+    private boolean dashed = false;
 
     public LineData() {}
 
@@ -79,5 +80,13 @@ public class LineData {
 
     public Color getAwtColor() {
         return Color.decode(color);
+    }
+
+    public boolean isDashed() {
+        return dashed;
+    }
+
+    public void setDashed(boolean dashed) {
+        this.dashed = dashed;
     }
 }

@@ -24,6 +24,10 @@ The MCP server provides tools:
 
 1. **generate_stock_chart** - Generate chart images from OHLC data
 2. **get_stock_data** - Fetch stock price data from Polygon.io
+   - params: `symbol` (supports ratios `AAPL/SPY`), `period` (`1D`,`1W`,`1M`,`3M`,`1Y`)
+   - optional: `startDate` (`YYYY-MM-DD`), `endDate` (`YYYY-MM-DD`) override `period`
+   - optional: `limit` (max bars; default larger to allow full history)
+   - returns: formatted table of Date, Open, High, Low, Close
 3. **calculate_technical_indicator** - Compute indicators over OHLC data
    - operation: `sma` (period, default 20), `rsi` (period, default 14), `macd` (fastPeriod 12, slowPeriod 26, signalPeriod 9)
    - input: `ohlcData` array
