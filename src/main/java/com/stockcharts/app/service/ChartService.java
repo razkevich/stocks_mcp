@@ -108,7 +108,6 @@ public class ChartService {
         }
     }
 
-    // (Fibonacci functionality removed)
 
     // Compute internal trend lines using Lower/Upper Convex Hulls constructed from lows and highs.
     // Lower hull connects support extrema (lows) with segments that stay below all intervening lows.
@@ -369,8 +368,6 @@ public class ChartService {
         }
     }
 
-    // (Removed: Fibonacci color palette helper)
-    
     private java.util.List<IndicatorSpec> parseIndicators(String indicatorsArg) {
         java.util.List<IndicatorSpec> list = new java.util.ArrayList<>();
         for (String part : indicatorsArg.split(",")) {
