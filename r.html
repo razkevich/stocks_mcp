@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Technical Analysis: AAPL & AAPL/SPY (Updated)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; color: #222; }
+    h1, h2 { margin: 0 0 8px; }
+    h1 { font-size: 22px; }
+    h2 { font-size: 18px; margin-top: 24px; }
+    p { margin: 8px 0; line-height: 1.45; }
+    ul { margin: 8px 0 16px 20px; }
+    li { margin: 4px 0; }
+    .chart { margin: 12px 0 20px; }
+    .meta { color: #666; font-size: 12px; }
+    .section { padding-bottom: 12px; border-bottom: 1px solid #eee; }
+    code { background: #f6f8fa; padding: 1px 4px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h1>Technical Analysis Summary</h1>
+  <p class="meta">Updated on 2025-09-06. Period: daily, approx. last 12 months (2024-09-01 to 2025-09-05). Indicators on charts: SMA(13), SMA(50), RSI(14), MACD(12/26/9). Custom detrended measure uses Close − SMA(13) as requested.</p>
+
+  <div class="section">
+    <h2>AAPL (Price with SMA, RSI, MACD)</h2>
+    <div class="chart">
+      <img src="AAPL_candlestick_chart.png" alt="AAPL with SMA(13), SMA(50), RSI(14), MACD" style="max-width: 100%; height: auto;" />
+      <div class="meta">Image: AAPL_candlestick_chart.png</div>
+    </div>
+    <p><strong>Snapshot readings (latest close ~2025-09-05):</strong></p>
+    <ul>
+      <li><strong>Custom Detrended (Close − SMA13)</strong>: approximately +8.0 (positive and elevated).</li>
+      <li><strong>RSI(14)</strong>: high-70s (overbought &gt; 70).</li>
+      <li><strong>Trend vs. SMA(50)</strong>: Price above SMA(50), uptrend intact.</li>
+      <li><strong>MACD</strong>: panel added for momentum/turns; confirms strong momentum regime.</li>
+    </ul>
+    <p><strong>Interpretation:</strong></p>
+    <ul>
+      <li><strong>Bullish thrust</strong>: Positive Close − SMA13 indicates price is running above its short-term baseline.</li>
+      <li><strong>Stretched momentum</strong>: RSI in high-70s suggests overbought; short-term mean reversion risk.</li>
+      <li><strong>Risk markers</strong>: A downturn in Close − SMA13 toward zero, or RSI/MACD divergences, would flag momentum cooling.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>AAPL/SPY Ratio (Relative Strength)</h2>
+    <div class="chart">
+      <img src="AAPL_SPY_line_chart.png" alt="AAPL/SPY with SMA(13), SMA(50), RSI(14), MACD" style="max-width: 100%; height: auto;" />
+      <div class="meta">Image: AAPL_SPY_line_chart.png</div>
+    </div>
+    <p><strong>Snapshot readings (latest close ~2025-09-05):</strong></p>
+    <ul>
+      <li><strong>RSI(14)</strong>: high-70s to ~80, indicating strong relative momentum.</li>
+      <li><strong>Trend vs. SMA(50)</strong>: Ratio above SMA(50), confirming AAPL outperformance vs SPY.</li>
+      <li><strong>MACD</strong>: added to highlight potential relative-momentum turns.</li>
+    </ul>
+    <p><strong>Interpretation:</strong></p>
+    <ul>
+      <li><strong>Leadership intact</strong>: Holding above SMA(50) with elevated RSI supports ongoing outperformance.</li>
+      <li><strong>Reset watch</strong>: An RSI/MACD reset while the ratio holds the rising SMA(50) would favor continuation.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Custom Detrended Details</h2>
+    <p>Requested definition: <code>Close − SMA(13)</code> (non-centered). This avoids the blank tail of canonical DPO and provides a simple, interpretable gauge of short-term extension.</p>
+    <ul>
+      <li><strong>Above zero</strong>: price above its 13-day mean; the larger the value, the stronger the near-term extension.</li>
+      <li><strong>Near/Below zero</strong>: potential cooling/mean reversion; zero-cross can mark minor regime shifts.</li>
+    </ul>
+    <p class="meta">Note: The current charting tool doesn’t render a custom Close−SMA panel. We include SMA(13) as an overlay on price and compute the metric numerically below. If you want, we can extend the MCP to plot this as a dedicated panel.</p>
+  </div>
+
+  <div class="section">
+    <h2>Latest Exact Readings</h2>
+    <p><strong>AAPL SMA(13)</strong> (latest 10): 227.48, 228.55, 229.27, 229.35, 229.77, 229.96, 229.68, 230.12, 230.75, 231.43 (through 2025-09-05)</p>
+    <p><strong>AAPL Close − SMA(13)</strong> (latest): approximately +8.0 on 2025-09-05 (using intraday/close ≈ 239.4 vs SMA13 ≈ 231.43)</p>
+    <p><strong>AAPL RSI(14)</strong> recent: 76.86, 75.75, 77.03, 77.72, 78.92, 78.00, 72.75, 78.41, 79.11, 78.92</p>
+    <p><strong>AAPL/SPY RSI(14)</strong> recent: 72.73, 73.05, 74.04, 74.59, 75.65, 76.46, 74.50, 80.30, 78.57, 79.00</p>
+  </div>
+
+  <div class="section">
+    <h2>Other Useful Ratios</h2>
+    <ul>
+      <li><strong>AAPL/QQQ</strong>: leadership vs mega-cap tech cohort.</li>
+      <li><strong>AAPL/XLK</strong>: leadership vs Technology sector.</li>
+      <li><strong>AAPL/RSP</strong>: leadership vs equal‑weight S&amp;P (breadth context).</li>
+      <li><strong>AAPL/NDX</strong>: complementary view to AAPL/QQQ.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>MCP Tools Plan (Polygon.io)</h2>
+    <p>Below are proposed MCP tools leveraging Polygon’s APIs. These map to common workflows (fundamentals, calendars, prices). They require a <code>POLYGON_API_KEY</code>.</p>
+    <ul>
+      <li><strong>fundamentals.get_ticker_details</strong>: GET <code>/v3/reference/tickers/{ticker}</code> → company profile, primary exchange, listing status.</li>
+      <li><strong>fundamentals.list_financials</strong>: GET <code>/vX/reference/financials?ticker=...</code> → income/balance/cashflow (quarterly/annual). Version depends on account; we’ll auto-detect.</li>
+      <li><strong>reference.list_dividends</strong>: GET <code>/v3/reference/dividends?ticker=...&amp;ex_dividend_date.gte=...</code> → dividend history/upcoming.</li>
+      <li><strong>reference.list_splits</strong>: GET <code>/v3/reference/splits?ticker=...</code> → split history.</li>
+      <li><strong>calendar.earnings</strong>: GET <code>/vX/reference/earnings?ticker=...&amp;report_date.gte=...</code> → earnings calendar & results.</li>
+      <li><strong>market.status_now</strong>: GET <code>/v2/marketstatus/now</code> → current market status.</li>
+      <li><strong>market.upcoming_holidays</strong>: GET <code>/v1/marketstatus/upcoming</code> → upcoming market holidays.</li>
+      <li><strong>aggregates.get_aggregates</strong>: GET <code>/v2/aggs/ticker/{ticker}/range/{mult}/{timespan}/{from}/{to}</code> → OHLCV bars for custom periods.</li>
+      <li><strong>prices.previous_close</strong>: GET <code>/v2/aggs/ticker/{ticker}/prev</code> → previous day OHLC.</li>
+      <li><strong>news.list</strong>: GET <code>/v2/reference/news?ticker=...&amp;limit=...</code> → recent news articles.</li>
+    </ul>
+    <p class="meta">We can expose these as MCP tools with concise schemas (inputs/outputs), handle pagination, and normalize common fields. Let me know your preferred language (TS/Node, Python, etc.) and I’ll scaffold the client with auth, retries, and rate‑limit backoff.</p>
+  </div>
+
+  <div class="section">
+    <h2>Actionable Summary</h2>
+    <ul>
+      <li><strong>Trend</strong>: Uptrend intact for AAPL; relative strength vs SPY remains firm.</li>
+      <li><strong>Momentum</strong>: Elevated RSI and positive Close − SMA13 imply short‑term extension; risk of pullback.</li>
+      <li><strong>Levels</strong>: Rising SMA(13) for short-term control; SMA(50) as first trend support.</li>
+      <li><strong>Next steps</strong>: Consider adds on dips toward rising SMA(13)/SMA(50) after an RSI/MACD reset; monitor zero‑line tests in Close − SMA13.</li>
+    </ul>
+  </div>
+
+  <p class="meta">Note: Indicator values are computed from the same data source used for the charts. Custom Close − SMA(13) can be promoted to a plotted panel by extending the MCP renderer—happy to implement.</p>
+</body>
+</html>

@@ -222,19 +222,21 @@ public class IndicatorService {
 
     public List<IndicatorValue> detrendedPriceOscillator(List<OhlcData> data, int period) {
         List<IndicatorValue> result = new ArrayList<>();
-        if (data == null || data.size() < period + period/2 || period <= 0) return result;
+        if (data == null || data.size() < period || period <= 0) return result;
 
         // Calculate SMA first
         List<IndicatorValue> smaValues = sma(data, period);
         
-        // DPO = Close - SMA[period/2 + 1 periods ago]
-        int offset = (period / 2) + 1;
-        
-        for (int i = offset; i < data.size() && (i - offset) < smaValues.size(); i++) {
-            double close = data.get(i).getClose();
-            double sma = smaValues.get(i - offset).getValue();
-            double dpo = close - sma;
-            result.add(new IndicatorValue(data.get(i).getDate(), dpo));
+        // DPO = Current Price - SMA(period)
+        // Since SMA values start from index (period-1), align them with price data
+        for (int i = 0; i < smaValues.size(); i++) {
+            int priceIndex = i + period - 1; // Align with original data index
+            if (priceIndex < data.size()) {
+                double close = data.get(priceIndex).getClose();
+                double smaValue = smaValues.get(i).getValue();
+                double dpo = close - smaValue;
+                result.add(new IndicatorValue(data.get(priceIndex).getDate(), dpo));
+            }
         }
         
         return result;

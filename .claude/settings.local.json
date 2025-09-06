@@ -12,7 +12,8 @@
       "mcp__stockcharts__getStockData",
       "mcp__stockcharts__calculateIndicator",
       "mcp__stockcharts__calculateRatio",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

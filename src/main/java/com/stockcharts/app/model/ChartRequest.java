@@ -13,6 +13,7 @@ public class ChartRequest {
     private String title = "Stock Chart";
     private int width = 800;
     private int height = 600;
+    private java.util.List<IndicatorSpec> indicators;
 
     public ChartRequest() {}
 
@@ -99,5 +100,13 @@ public class ChartRequest {
 
     public void setEndDate(String endDate) {
         this.endDate = endDate;
+    }
+
+    public java.util.List<IndicatorSpec> getIndicators() {
+        return indicators;
+    }
+
+    public void setIndicators(java.util.List<IndicatorSpec> indicators) {
+        this.indicators = indicators;
     }
 }
