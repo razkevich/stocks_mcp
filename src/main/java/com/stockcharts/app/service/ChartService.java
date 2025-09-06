@@ -36,8 +36,16 @@ public class ChartService {
         System.setProperty("java.awt.headless", "true");
     }
 
-    @Tool(description = "Generate a stock chart for a given symbol or ratio (e.g., AAPL or AAPL/SPY) with specified chart type (candlestick, line, ohlc). To draw a line, provide lineStartDate, lineEndDate, lineStartValue, lineEndValue.")
-    public String generateChart(String symbol, String chartType, String period, String startDate, String endDate, String lineStartDate, String lineEndDate, Double lineStartValue, Double lineEndValue) {
+    @Tool(description = "Generate a comprehensive stock chart for a symbol or ratio with technical indicators. " +
+          "Parameters: symbol (e.g., 'AAPL' or 'AAPL/SPY'), chartType ('candlestick'|'line'|'ohlc'), period ('1D'), " +
+          "startDate ('2025-08-01'), endDate ('2025-09-05'), " +
+          "indicators (comma-separated list: 'SMA:20:overlay,RSI:14:panel,MACD:12:panel'), " +
+          "lineStartDate, lineEndDate, lineStartValue, lineEndValue (for custom trend lines). " +
+          "Indicators format: 'TYPE:PERIOD:DISPLAY' where DISPLAY is 'overlay' (same pane) or 'panel' (separate pane). " +
+          "Returns file path to generated PNG chart.")
+    public String generateChart(String symbol, String chartType, String period, String startDate, String endDate, 
+                               String indicators, String lineStartDate, String lineEndDate, 
+                               Double lineStartValue, Double lineEndValue) {
         try {
             ChartRequest request = new ChartRequest();
             request.setSymbol(symbol);

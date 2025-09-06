@@ -86,7 +86,10 @@ public class PolygonService {
         return ohlcDataList;
     }
     
-    @Tool(description = "Get stock market data for a given symbol or ratio (e.g., AAPL or AAPL/SPY) including OHLC data and current price")
+    @Tool(description = "Retrieve detailed OHLC stock market data for a symbol or ratio. " +
+          "Supports individual stocks (e.g., 'AAPL', 'MSFT') and ratios (e.g., 'AAPL/SPY' for relative performance analysis). " +
+          "Parameters: symbol ('AAPL' or 'AAPL/SPY'), period ('1D' for daily data). " +
+          "Returns formatted table with Date, Open, High, Low, Close prices for recent trading sessions.")
     public String getStockData(String symbol, String period) {
         try {
             // Parse period to determine the timeframe
