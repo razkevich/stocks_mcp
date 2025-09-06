@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Analysis Report - AAPL</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .header { background: #f0f8ff; padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+        .section { margin: 30px 0; }
+        .chart { text-align: center; margin: 20px 0; }
+        .chart img { max-width: 100%; border: 1px solid #ddd; border-radius: 5px; }
+        .summary { background: #f9f9f9; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0; }
+        .recommendation { background: #e8f5e8; padding: 20px; border-left: 4px solid #4CAF50; margin: 20px 0; }
+        .risk { background: #fff3e0; padding: 15px; border-left: 4px solid #FF9800; margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .bullish { color: #4CAF50; font-weight: bold; }
+        .bearish { color: #f44336; font-weight: bold; }
+        .neutral { color: #FF9800; font-weight: bold; }
+        .price-target { font-size: 1.2em; font-weight: bold; }
+        .chart-caption { font-style: italic; color: #666; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Comprehensive Technical Analysis Report</h1>
+        <h2>Apple Inc. (AAPL)</h2>
+        <p><strong>Analysis Date:</strong> September 6, 2025</p>
+        <p><strong>Current Price:</strong> $239.40</p>
+        <p><strong>Market Classification:</strong> Large Cap Technology</p>
+        <p><strong>Analyst:</strong> Claude Stock Analyzer Agent</p>
+    </div>
+
+    <div class="summary">
+        <h2>Executive Summary</h2>
+        <table>
+            <tr><td><strong>Overall Trend:</strong></td><td class="neutral">Neutral to Bullish</td></tr>
+            <tr><td><strong>Risk Level:</strong></td><td class="neutral">Medium</td></tr>
+            <tr><td><strong>Primary Drivers:</strong></td><td>Technical consolidation, overbought RSI conditions</td></tr>
+            <tr><td><strong>Time Horizon:</strong></td><td>Medium-term (3-6 months)</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Chart Analysis</h2>
+        
+        <div class="chart">
+            <h3>Primary AAPL Analysis</h3>
+            <img src="AAPL_candlestick_chart.png" alt="AAPL Candlestick Chart with Technical Indicators">
+            <p class="chart-caption">AAPL candlestick chart with SMA(20,50), RSI(14), MACD, Fibonacci retracements and trend lines</p>
+        </div>
+
+        <div class="chart">
+            <h3>AAPL Momentum Analysis</h3>
+            <img src="AAPL_ohlc_chart.png" alt="AAPL OHLC Chart with Momentum Indicators">
+            <p class="chart-caption">AAPL OHLC chart featuring EMA(12,26), MACD, and DPO for momentum analysis</p>
+        </div>
+
+        <div class="chart">
+            <h3>AAPL vs S&P 500 Relative Performance</h3>
+            <img src="AAPL_SPY_line_chart.png" alt="AAPL/SPY Ratio Chart">
+            <p class="chart-caption">AAPL/SPY ratio analysis showing relative performance vs broad market</p>
+        </div>
+
+        <div class="chart">
+            <h3>AAPL vs NASDAQ-100 Relative Performance</h3>
+            <img src="AAPL_QQQ_line_chart.png" alt="AAPL/QQQ Ratio Chart">
+            <p class="chart-caption">AAPL/QQQ ratio analysis showing performance vs technology sector</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Technical Analysis Details</h2>
+        
+        <h3>Price Action Analysis</h3>
+        <ul>
+            <li><strong>Current Trading Range:</strong> $239.25 - $239.56 (tight consolidation)</li>
+            <li><strong>Trend Structure:</strong> Consolidating near recent highs with minimal volatility</li>
+            <li><strong>Volume Analysis:</strong> Stable trading volume during consolidation phase</li>
+            <li><strong>Support Levels:</strong> $235.00, $220.00 (major Fibonacci support)</li>
+            <li><strong>Resistance Levels:</strong> $245.00, $250.00 (psychological resistance)</li>
+        </ul>
+
+        <h3>Technical Indicator Signals</h3>
+        <table>
+            <tr>
+                <th>Indicator</th>
+                <th>Current Value</th>
+                <th>Signal</th>
+                <th>Interpretation</th>
+            </tr>
+            <tr>
+                <td>RSI (14)</td>
+                <td>78.92</td>
+                <td class="bearish">Overbought</td>
+                <td>Near-term pullback potential, levels above 70 suggest caution</td>
+            </tr>
+            <tr>
+                <td>SMA (20)</td>
+                <td>~$238</td>
+                <td class="bullish">Bullish</td>
+                <td>Price above 20-day moving average indicates short-term uptrend</td>
+            </tr>
+            <tr>
+                <td>SMA (50)</td>
+                <td>~$235</td>
+                <td class="bullish">Bullish</td>
+                <td>Price well above 50-day MA confirms intermediate uptrend</td>
+            </tr>
+            <tr>
+                <td>MACD</td>
+                <td>Neutral</td>
+                <td class="neutral">Neutral</td>
+                <td>Momentum appears flat, awaiting direction confirmation</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Relative Performance Analysis</h2>
+        
+        <h3>Benchmark Comparisons</h3>
+        <table>
+            <tr>
+                <th>Ratio</th>
+                <th>Current Level</th>
+                <th>Trend</th>
+                <th>Analysis</th>
+            </tr>
+            <tr>
+                <td>AAPL/SPY</td>
+                <td>0.3680</td>
+                <td class="neutral">Stable</td>
+                <td>Slight outperformance vs broad market, maintaining relative strength</td>
+            </tr>
+            <tr>
+                <td>AAPL/QQQ</td>
+                <td>0.4141</td>
+                <td class="neutral">Stable</td>
+                <td>In-line performance vs tech sector, no significant divergence</td>
+            </tr>
+        </table>
+
+        <h3>Sector Analysis</h3>
+        <p>AAPL is maintaining its relative strength within the technology sector, showing no signs of significant underperformance. The stable ratio vs QQQ suggests AAPL is keeping pace with the broader tech rally while demonstrating slight outperformance vs the overall market (SPY).</p>
+    </div>
+
+    <div class="section">
+        <h2>Key Levels and Fibonacci Analysis</h2>
+        
+        <table>
+            <tr>
+                <th>Level Type</th>
+                <th>Price</th>
+                <th>Distance from Current</th>
+                <th>Significance</th>
+            </tr>
+            <tr>
+                <td><strong>Resistance</strong></td>
+                <td>$245.00</td>
+                <td>+2.3%</td>
+                <td>Recent high, psychological resistance</td>
+            </tr>
+            <tr>
+                <td><strong>Resistance</strong></td>
+                <td>$250.00</td>
+                <td>+4.4%</td>
+                <td>Major psychological level, Fibonacci extension</td>
+            </tr>
+            <tr>
+                <td><strong>Support</strong></td>
+                <td>$235.00</td>
+                <td>-1.8%</td>
+                <td>50-day SMA confluence, minor support</td>
+            </tr>
+            <tr>
+                <td><strong>Support</strong></td>
+                <td>$230.00</td>
+                <td>-3.9%</td>
+                <td>Fibonacci 38.2% retracement level</td>
+            </tr>
+            <tr>
+                <td><strong>Major Support</strong></td>
+                <td>$220.00</td>
+                <td>-8.1%</td>
+                <td>Fibonacci 61.8% retracement, major support zone</td>
+            </tr>
+        </table>
+
+        <h3>Fibonacci Levels</h3>
+        <p>Based on the recent swing from $220 (low) to $245 (high):</p>
+        <ul>
+            <li><strong>23.6% Retracement:</strong> $239.00 (current level)</li>
+            <li><strong>38.2% Retracement:</strong> $235.50</li>
+            <li><strong>50.0% Retracement:</strong> $232.50</li>
+            <li><strong>61.8% Retracement:</strong> $229.00</li>
+        </ul>
+    </div>
+
+    <div class="risk">
+        <h2>Risk Assessment</h2>
+        
+        <h3>Technical Warning Signs</h3>
+        <ul>
+            <li><strong>Overbought RSI:</strong> RSI above 78 suggests potential for near-term pullback</li>
+            <li><strong>Limited Upside:</strong> Price near resistance levels with compressed volatility</li>
+            <li><strong>Consolidation Pattern:</strong> Tight range could precede significant move in either direction</li>
+        </ul>
+
+        <h3>Market Risk Factors</h3>
+        <ul>
+            <li><strong>Macro Environment:</strong> Interest rate sensitivity for growth stocks</li>
+            <li><strong>Sector Rotation:</strong> Potential rotation away from mega-cap tech</li>
+            <li><strong>Earnings Risk:</strong> High expectations may lead to volatility around earnings</li>
+        </ul>
+
+        <h3>Key Levels to Watch</h3>
+        <ul>
+            <li><strong>Break Above $245:</strong> Would signal continuation to $250+ targets</li>
+            <li><strong>Break Below $235:</strong> Could trigger deeper correction toward $230</li>
+            <li><strong>RSI Below 50:</strong> Would indicate momentum shift to bearish</li>
+        </ul>
+    </div>
+
+    <div class="recommendation">
+        <h2>Investment Recommendation</h2>
+        <table>
+            <tr><td><strong>Rating:</strong></td><td class="neutral">HOLD</td></tr>
+            <tr><td><strong>Confidence:</strong></td><td>Medium</td></tr>
+            <tr><td><strong>Target Price:</strong></td><td class="price-target">$248.00 (+3.6%)</td></tr>
+            <tr><td><strong>Stop Loss:</strong></td><td>$232.00 (-3.1%)</td></tr>
+            <tr><td><strong>Time Horizon:</strong></td><td>Medium term (3-6 months)</td></tr>
+        </table>
+        
+        <h3>Investment Thesis</h3>
+        <p><strong>Rationale:</strong> AAPL is currently in a consolidation phase near recent highs with mixed technical signals. While the RSI indicates overbought conditions suggesting near-term caution, the overall trend structure remains intact with price above key moving averages. The stock maintains relative strength vs broader markets.</p>
+        
+        <p><strong>Strategy:</strong> Current position holders should maintain holdings with tight risk management. New investors should wait for either a breakout above $245 for momentum entry or a pullback to $232-235 support zone for value entry. The tight consolidation pattern suggests a significant move is building.</p>
+
+        <h3>Scenarios</h3>
+        <ul>
+            <li><strong>Bull Case ($250+ target):</strong> Break above $245 with volume, RSI reset below 70, continued tech sector leadership</li>
+            <li><strong>Base Case ($240-245 range):</strong> Continued consolidation for 4-6 weeks, gradual upward bias</li>
+            <li><strong>Bear Case ($225-230 target):</strong> RSI breakdown, broad market weakness, break below $235 support</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Conclusion</h2>
+        <p>AAPL presents a mixed technical picture with consolidation near highs and overbought momentum indicators. The stock maintains fundamental relative strength but requires patience for the next directional move. Risk management is crucial given the elevated RSI levels and potential for near-term volatility.</p>
+        
+        <p><strong>Next Review:</strong> Monitor price action around key levels ($245 resistance, $235 support) and RSI normalization for updated guidance.</p>
+    </div>
+
+    <div style="margin-top: 50px; padding: 20px; background: #f5f5f5; border-radius: 5px; font-size: 0.9em; color: #666;">
+        <h3>Disclaimer</h3>
+        <p>This analysis is for informational purposes only and should not be considered as financial advice. Technical analysis involves risk and past performance does not guarantee future results. Always consult with a qualified financial advisor before making investment decisions. The author assumes no responsibility for any losses that may result from the use of this information.</p>
+        <p><strong>Analysis Generated:</strong> September 6, 2025 by Claude Stock Analyzer Agent</p>
+    </div>
+</body>
+</html>

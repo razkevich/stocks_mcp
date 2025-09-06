@@ -89,7 +89,7 @@ public class ChartService {
             java.util.List<LineData> lines = new java.util.ArrayList<>();
             
             // Handle horizontal line from single point
-            if (lineStartValue != null && lineEndValue == null) {
+            if (lineStartValue != null && (lineEndValue == null || lineEndValue == 0)) {
                 LineData horizontalLine = new LineData(
                     java.time.LocalDate.parse(startDate),
                     java.time.LocalDate.parse(endDate),
@@ -103,7 +103,7 @@ public class ChartService {
             }
             
             // Handle two-point line (extend to chart boundaries)
-            if (lineStartValue != null && lineEndValue != null) {
+            if (lineStartValue != null && lineEndValue != null && lineEndValue != 0) {
                 // Calculate slope and extend line to chart boundaries
                 java.time.LocalDate chartStart = java.time.LocalDate.parse(startDate);
                 java.time.LocalDate chartEnd = java.time.LocalDate.parse(endDate);

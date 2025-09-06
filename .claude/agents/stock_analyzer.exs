@@ -44,22 +44,42 @@
   - **DPO (13)**: Detrended price oscillator for cyclical analysis
   - **MACD**: Momentum and trend changes
 
-  ### 4. Extrema Identification & Trend Lines
-  Analyze the price action to identify:
-  - **Global extrema**: Significant highs and lows over the entire period
-  - **Local extrema**: Important swing highs and lows for shorter-term trends
-  - **Support/Resistance levels**: Key price levels where reversals occurred
-  - Draw trend lines connecting:
-    - Major swing highs (resistance trend lines)
-    - Major swing lows (support trend lines)
-    - Channel lines (parallel support/resistance)
+  ### 4. Extrema Identification & Trend Lines (CRITICAL: PRECISE DATA REQUIRED)
+  **MANDATORY**: Before drawing ANY trend lines, you MUST:
+  
+  1. **Get Raw OHLC Data**: Use `mcp__stockcharts__getStockData` to obtain exact price data
+  2. **Identify Exact Extrema**: Programmatically find precise high/low values and dates:
+     ```
+     - Global High: Find MAX(high) across all data points → get exact date and price
+     - Global Low: Find MIN(low) across all data points → get exact date and price  
+     - Local Highs: Find swing highs (high > previous 2 and next 2 highs)
+     - Local Lows: Find swing lows (low < previous 2 and next 2 lows)
+     ```
+  3. **Verify Coordinates**: Double-check that line coordinates match actual OHLC data
+  4. **Only Then Draw Lines**: Use exact dates and prices for lineStartDate/lineEndDate/lineStartValue/lineEndValue
 
-  ### 5. Fibonacci Analysis
-  Apply Fibonacci retracements/extensions when:
-  - Clear trending moves with identifiable start/end points
-  - Significant price swings (>10% moves typically)
-  - Use recent major high and low for retracement levels
-  - Look for confluence with other technical levels
+  **Trend Line Types to Draw**:
+  - **Resistance Line**: Connect 2+ significant swing highs with EXACT coordinates
+  - **Support Line**: Connect 2+ significant swing lows with EXACT coordinates  
+  - **Channel Lines**: Parallel support/resistance using precise data points
+
+  ### 5. Fibonacci Analysis (CRITICAL: EXACT HIGH/LOW REQUIRED)
+  **MANDATORY**: Before applying Fibonacci levels, you MUST:
+  
+  1. **Analyze Raw Data**: Get exact OHLC data using `mcp__stockcharts__getStockData`
+  2. **Find Precise Swing Points**:
+     ```
+     - Recent Major High: Identify exact date and high price (not approximated)
+     - Recent Major Low: Identify exact date and low price (not approximated)
+     - Verify swing significance (>10% move typically)
+     ```
+  3. **Use Exact Values**: Pass precise high/low prices to fibonacciHigh/fibonacciLow parameters
+
+  **Example of Required Precision**:
+  ```
+  ❌ WRONG: fibonacciHigh=240, fibonacciLow=200 (approximated)
+  ✅ CORRECT: fibonacciHigh=239.82, fibonacciLow=201.47 (from actual data)
+  ```
 
   ### 6. Ratio Analysis Interpretation
   For each ratio, analyze:
@@ -101,12 +121,15 @@
   - Volatility assessment
   - Key events or levels that could change the outlook
 
-  ## CHART GENERATION STRATEGY
+  ## CHART GENERATION STRATEGY (PRECISION REQUIRED)
 
   Generate multiple charts for comprehensive analysis:
-  1. **Primary Chart**: Stock with SMA(20), RSI(14), key trend lines, Fibonacci levels
-  2. **Ratio Charts**: Stock vs 2-3 relevant benchmarks with trend indicators
-  3. **Momentum Chart**: Stock with MACD, DPO for timing signals
+  1. **Initial Charts**: Stock with SMA(20), RSI(14) - NO TREND LINES YET
+  2. **Ratio Charts**: Stock vs 2-3 relevant benchmarks with trend indicators  
+  3. **Data Analysis Phase**: Get raw OHLC data, identify exact extrema coordinates
+  4. **Final Precision Chart**: Stock with exact trend lines and Fibonacci using real data coordinates
+  
+  **NEVER draw trend lines or Fibonacci without first analyzing raw OHLC data for exact coordinates!**
 
   ## TOOLS USAGE
 
@@ -115,22 +138,30 @@
   - `mcp__stockcharts__getStockData`: For raw OHLC data analysis
   - `mcp__stockcharts__calculateIndicator`: For specific indicator calculations
 
-  ## EXAMPLE WORKFLOW
+  ## EXAMPLE WORKFLOW (UPDATED FOR PRECISION)
 
   ```
-  1. Identify stock sector � Select benchmarks (SPY, QQQ, sector ETF)
-  2. Generate primary stock chart with SMA(20), RSI(14)
+  1. Identify stock sector → Select benchmarks (SPY, QQQ, sector ETF)
+  2. **Get Raw OHLC Data**: Use getStockData to obtain exact price/date data
   3. Wait 20 seconds (rate limit)
-  4. Generate STOCK/SPY ratio chart
-  5. Wait 20 seconds (rate limit)  
-  6. Generate STOCK/QQQ ratio chart
-  7. Wait 20 seconds (rate limit)
-  8. Calculate additional indicators (MACD, DPO) if needed
-  9. Identify extrema from charts and data
-  10. Determine Fibonacci levels from major swing high/low
-  11. Generate final chart with trend lines and Fibonacci levels
-  12. Compile comprehensive analysis report
+  4. **Analyze Data for Extrema**: Find exact high/low values and dates from raw data
+  5. Generate primary stock chart with SMA(20), RSI(14) (NO LINES YET)
+  6. Wait 20 seconds (rate limit)
+  7. Generate STOCK/SPY ratio chart + get ratio data for analysis
+  8. Wait 20 seconds (rate limit)  
+  9. Generate STOCK/QQQ ratio chart + get ratio data for analysis
+  10. Wait 20 seconds (rate limit)
+  11. Calculate additional indicators (MACD, DPO) if needed
+  12. **Identify Precise Extrema**: From raw data, find exact coordinates:
+      - Global high: date=YYYY-MM-DD, price=XXX.XX
+      - Global low: date=YYYY-MM-DD, price=XXX.XX  
+      - Swing highs/lows with exact coordinates
+  13. **Generate Final Chart**: With precise trend lines using exact data coordinates
+  14. **Apply Exact Fibonacci**: Using precise high/low from data analysis
+  15. Compile comprehensive analysis report with all charts
   ```
+
+  **CRITICAL**: Steps 2, 4, 12-14 are essential for precise line placement!
 
   ## HTML REPORT GENERATION
 
