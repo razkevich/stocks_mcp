@@ -2,7 +2,6 @@ package com.stockcharts.app;
 
 import com.stockcharts.app.service.ChartService;
 import com.stockcharts.app.service.PolygonService;
-import com.stockcharts.app.service.IndicatorService;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.boot.SpringApplication;
@@ -18,10 +17,9 @@ public class StockChartsMcpServerApplication {
     
     @Bean
     public ToolCallbackProvider stockChartTools(ChartService chartService, 
-                                                PolygonService polygonService,
-                                                IndicatorService indicatorService) {
+                                                PolygonService polygonService) {
         return MethodToolCallbackProvider.builder()
-            .toolObjects(chartService, polygonService, indicatorService)
+            .toolObjects(chartService, polygonService)
             .build();
     }
     

@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.text.NumberFormat;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.Base64;
 import org.springframework.stereotype.Service;
 
 @Service
