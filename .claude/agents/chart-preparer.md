@@ -128,10 +128,17 @@ Before drawing ANY trend lines, you MUST:
 ## OUTPUT REQUIREMENTS
 Provide a comprehensive report containing:
 1. **Chart File Inventory**: Complete list of generated PNG files with descriptions
-2. **Technical Data Summary**: Key indicator values, extrema coordinates with timestamps
-3. **Chart Specifications**: Detailed description of what each chart displays and timeframes
-4. **Quality Verification**: Confirmation that all trend lines and Fibonacci levels use verified data points
-5. **API Call Log**: Summary of data retrieval operations and timing
+2. **Extrema Documentation**: Complete list of identified extrema with exact coordinates:
+   - "Global High: Date YYYY-MM-DD, Price: XXXX.XX"
+   - "Global Low: Date YYYY-MM-DD, Price: XXXX.XX"  
+   - "Swing Highs: [Date: YYYY-MM-DD, Price: XXXX.XX], [Date: YYYY-MM-DD, Price: XXXX.XX]..."
+   - "Swing Lows: [Date: YYYY-MM-DD, Price: XXXX.XX], [Date: YYYY-MM-DD, Price: XXXX.XX]..."
+3. **Selected Coordinates**: Document exact values used for chart generation:
+   - "Trend Line: Start(Date: YYYY-MM-DD, Price: XXXX.XX) -> End(Date: YYYY-MM-DD, Price: XXXX.XX)"
+   - "Fibonacci: High(Date: YYYY-MM-DD, Price: XXXX.XX) to Low(Date: YYYY-MM-DD, Price: XXXX.XX)"
+4. **Data Verification**: Confirm all coordinates cross-referenced against retrieved OHLC data
+5. **Technical Indicators**: Key indicator values and parameters used
+6. **API Call Log**: Summary of data retrieval operations and timing
 
 ## ERROR HANDLING PROTOCOLS
 - Handle API rate limit errors with exponential backoff
