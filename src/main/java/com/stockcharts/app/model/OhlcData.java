@@ -8,6 +8,7 @@ public class OhlcData {
     private double high;
     private double low;
     private double close;
+    private double percentReturn; // Current day's close / previous day's close
 
     public OhlcData() {}
 
@@ -17,6 +18,16 @@ public class OhlcData {
         this.high = high;
         this.low = low;
         this.close = close;
+        this.percentReturn = 1.0; // Default to no change
+    }
+
+    public OhlcData(LocalDate date, double open, double high, double low, double close, double percentReturn) {
+        this.date = date;
+        this.open = open;
+        this.high = high;
+        this.low = low;
+        this.close = close;
+        this.percentReturn = percentReturn;
     }
 
     public LocalDate getDate() {
@@ -57,5 +68,13 @@ public class OhlcData {
 
     public void setClose(double close) {
         this.close = close;
+    }
+
+    public double getPercentReturn() {
+        return percentReturn;
+    }
+
+    public void setPercentReturn(double percentReturn) {
+        this.percentReturn = percentReturn;
     }
 }

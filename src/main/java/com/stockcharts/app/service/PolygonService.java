@@ -71,7 +71,10 @@ public class PolygonService {
         }
         
         JsonNode results = root.get("results");
-        for (JsonNode result : results) {
+        double previousClose = 0.0;
+        
+        for (int i = 0; i < results.size(); i++) {
+            JsonNode result = results.get(i);
             long timestamp = result.get("t").asLong();
             // Polygon returns epoch millis for the bar start; convert accurately to LocalDate
             java.time.LocalDate date = java.time.Instant
@@ -84,7 +87,11 @@ public class PolygonService {
             double low = result.get("l").asDouble();
             double close = result.get("c").asDouble();
             
-            ohlcDataList.add(new OhlcData(date, open, high, low, close));
+            // Calculate percent return (current close / previous close)
+            double percentReturn = (i == 0 || previousClose == 0.0) ? 1.0 : close / previousClose;
+            
+            ohlcDataList.add(new OhlcData(date, open, high, low, close, percentReturn));
+            previousClose = close;
         }
         
         return ohlcDataList;
@@ -95,7 +102,7 @@ public class PolygonService {
           "Parameters: symbol ('AAPL' or 'AAPL/SPY'); period ('1D','1W','1M','3M','1Y'); " +
           "startDate ('YYYY-MM-DD') and endDate ('YYYY-MM-DD') override period if provided; " +
           "limit (max bars to return; default larger for full history). " +
-          "Returns a formatted table: Date, Open, High, Low, Close.")
+          "Returns a formatted table: Date, Open, High, Low, Close, % Return.")
     public String getStockData(String symbol, String period, String startDate, String endDate, Integer limit) {
         try {
             // Parse period to determine the timeframe
@@ -173,17 +180,19 @@ public class PolygonService {
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("Stock data for %s (%s %s bars from %s to %s):\n\n", 
                 ticker.toUpperCase(), multiplier, timespan, from, to));
-            sb.append("Date       | Open     | High     | Low      | Close\n");
-            sb.append("-----------|----------|----------|----------|----------\n");
+            sb.append("Date       | Open     | High     | Low      | Close    | % Return\n");
+            sb.append("-----------|----------|----------|----------|----------|----------\n");
             
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
             for (OhlcData ohlc : data) {
-                sb.append(String.format("%-10s | %8.2f | %8.2f | %8.2f | %8.2f\n",
+                double percentChange = (ohlc.getPercentReturn() - 1.0) * 100.0; // Convert to percentage
+                sb.append(String.format("%-10s | %8.2f | %8.2f | %8.2f | %8.2f | %8.2f%%\n",
                     ohlc.getDate().format(formatter),
                     ohlc.getOpen(),
                     ohlc.getHigh(),
                     ohlc.getLow(),
-                    ohlc.getClose()));
+                    ohlc.getClose(),
+                    percentChange));
             }
             
             sb.append(String.format("\nTotal records: %d\n", data.size()));
@@ -217,6 +226,8 @@ public class PolygonService {
             
             // Calculate ratio data
             List<OhlcData> ratioData = new ArrayList<>();
+            double previousRatioClose = 0.0;
+            
             for (OhlcData numData : numeratorData) {
                 OhlcData denomData = denominatorMap.get(numData.getDate());
                 if (denomData != null && denomData.getClose() != 0 && denomData.getOpen() != 0 && 
@@ -227,24 +238,31 @@ public class PolygonService {
                     double ratioLow = numData.getLow() / denomData.getLow();
                     double ratioClose = numData.getClose() / denomData.getClose();
                     
-                    ratioData.add(new OhlcData(numData.getDate(), ratioOpen, ratioHigh, ratioLow, ratioClose));
+                    // Calculate percent return for ratio
+                    double ratioPercentReturn = (ratioData.isEmpty() || previousRatioClose == 0.0) ? 
+                        1.0 : ratioClose / previousRatioClose;
+                    
+                    ratioData.add(new OhlcData(numData.getDate(), ratioOpen, ratioHigh, ratioLow, ratioClose, ratioPercentReturn));
+                    previousRatioClose = ratioClose;
                 }
             }
             
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("Ratio data for %s (%s %s bars from %s to %s):\n\n", 
                 ratioSymbol.toUpperCase(), multiplier, timespan, from, to));
-            sb.append("Date       | Open     | High     | Low      | Close\n");
-            sb.append("-----------|----------|----------|----------|----------\n");
+            sb.append("Date       | Open     | High     | Low      | Close    | % Return\n");
+            sb.append("-----------|----------|----------|----------|----------|----------\n");
             
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
             for (OhlcData ohlc : ratioData) {
-                sb.append(String.format("%-10s | %8.4f | %8.4f | %8.4f | %8.4f\n",
+                double percentChange = (ohlc.getPercentReturn() - 1.0) * 100.0; // Convert to percentage
+                sb.append(String.format("%-10s | %8.4f | %8.4f | %8.4f | %8.4f | %8.2f%%\n",
                     ohlc.getDate().format(formatter),
                     ohlc.getOpen(),
                     ohlc.getHigh(),
                     ohlc.getLow(),
-                    ohlc.getClose()));
+                    ohlc.getClose(),
+                    percentChange));
             }
             
             sb.append(String.format("\nTotal records: %d\n", ratioData.size()));

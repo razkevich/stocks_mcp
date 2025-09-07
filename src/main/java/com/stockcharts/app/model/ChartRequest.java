@@ -11,8 +11,8 @@ public class ChartRequest {
     private List<OhlcData> ohlcData;
     private List<LineData> lines;
     private String title = "Stock Chart";
-    private int width = 800;
-    private int height = 600;
+    private int width = 800*5;
+    private int height = 600*5;
     private java.util.List<IndicatorSpec> indicators;
 
     public ChartRequest() {}

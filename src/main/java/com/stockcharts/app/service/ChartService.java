@@ -134,6 +134,98 @@ public class ChartService {
         }
     }
 
+    @Tool(description = "Generate a comprehensive stock chart from provided OHLC data with technical indicators and Fibonacci retracements. " +
+          "Parameters: ohlcDataJson (JSON array of OHLC objects with format [{\"date\":\"YYYY-MM-DD\",\"open\":123.45,\"high\":125.67,\"low\":121.23,\"close\":124.56}]), " +
+          "title (optional chart title), chartType ('candlestick'|'line'|'ohlc'), " +
+          "indicators (comma-separated list: 'SMA:20:overlay,RSI:14:panel'). " +
+          "Includes automatic Dinapoli-style Fibonacci retracements and convex hull trend lines. " +
+          "Returns file path to generated PNG chart.")
+    public String generateChartFromData(String ohlcDataJson, String title, String chartType, String indicators) {
+        try {
+            // Parse the OHLC data from JSON
+            java.util.List<OhlcData> stockData = parseOhlcDataFromJson(ohlcDataJson);
+            
+            if (stockData == null || stockData.isEmpty()) {
+                return "Error: No valid OHLC data provided";
+            }
+            
+            ChartRequest request = new ChartRequest();
+            request.setSymbol(title != null ? title : "Custom Data");
+            request.setChartType(chartType != null ? chartType : "candlestick");
+            request.setTitle(title != null ? title : "Custom OHLC Chart");
+            request.setOhlcData(stockData);
+
+            // Parse indicators, if provided
+            if (indicators != null && !indicators.trim().isEmpty()) {
+                request.setIndicators(parseIndicators(indicators));
+            }
+            
+            // Build internal trend lines from convex hull of highs/lows
+            java.util.List<LineData> lines = generateConvexHullTrendLines(stockData);
+            
+            // Generate Dinapoli-style Fibonacci retracements
+            java.util.List<LineData> fibonacciLines = generateFibonacciRetracements(stockData);
+            lines.addAll(fibonacciLines);
+            
+            if (!lines.isEmpty()) {
+                request.setLines(lines);
+            }
+            
+            byte[] chartData = generateChartBytes(request);
+            
+            // Save chart to file
+            String fileName = (title != null ? title.replaceAll("[^a-zA-Z0-9]", "_") : "custom_data") 
+                            + "_" + chartType + "_chart.png";
+            String filePath = fileName;
+            try {
+                java.nio.file.Files.write(java.nio.file.Paths.get(filePath), chartData);
+                return "Chart generated successfully from provided OHLC data. Chart saved to: " + filePath;
+            } catch (Exception e) {
+                return "Error saving chart to file: " + e.getMessage();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Error generating chart from OHLC data: " + e.getMessage();
+        }
+    }
+
+    private java.util.List<OhlcData> parseOhlcDataFromJson(String jsonString) {
+        try {
+            com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(jsonString);
+            java.util.List<OhlcData> ohlcDataList = new java.util.ArrayList<>();
+            
+            if (root.isArray()) {
+                double previousClose = 0.0;
+                for (int i = 0; i < root.size(); i++) {
+                    com.fasterxml.jackson.databind.JsonNode node = root.get(i);
+                    String dateStr = node.has("date") ? node.get("date").asText() : null;
+                    double open = node.has("open") ? node.get("open").asDouble() : 0.0;
+                    double high = node.has("high") ? node.get("high").asDouble() : 0.0;
+                    double low = node.has("low") ? node.get("low").asDouble() : 0.0;
+                    double close = node.has("close") ? node.get("close").asDouble() : 0.0;
+                    
+                    // Calculate percent return or use provided value
+                    double percentReturn = node.has("percentReturn") ? 
+                        node.get("percentReturn").asDouble() : 
+                        ((i == 0 || previousClose == 0.0) ? 1.0 : close / previousClose);
+                    
+                    if (dateStr != null) {
+                        java.time.LocalDate date = java.time.LocalDate.parse(dateStr);
+                        ohlcDataList.add(new OhlcData(date, open, high, low, close, percentReturn));
+                        previousClose = close;
+                    }
+                }
+            }
+            
+            return ohlcDataList;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new java.util.ArrayList<>();
+        }
+    }
+
+    // Add Jackson ObjectMapper for JSON parsing
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     // Compute internal trend lines using Lower/Upper Convex Hulls constructed from lows and highs.
     // Lower hull connects support extrema (lows) with segments that stay below all intervening lows.
@@ -391,7 +483,59 @@ public class ChartService {
         return validatedPoints;
     }
     
-    private java.util.List<FibonacciSet> createFibonacciSets(java.util.List<SwingPoint> swingPoints) {
+    /**
+     * Critical validation: Ensure that anchor points are true extremes within the full date range.
+     * For a valid Fibonacci retracement:
+     * - Low anchor must be the minimum price in the range [firstIndex, secondIndex]
+     * - High anchor must be the maximum price in the range [firstIndex, secondIndex]
+     */
+    private boolean validateAnchorExtremes(SwingPoint first, SwingPoint second, java.util.List<OhlcData> data) {
+        int startIndex = Math.min(first.index, second.index);
+        int endIndex = Math.max(first.index, second.index);
+        
+        // Find actual min and max within the date range
+        double rangeMin = Double.MAX_VALUE;
+        double rangeMax = Double.MIN_VALUE;
+        
+        for (int i = startIndex; i <= endIndex; i++) {
+            OhlcData bar = data.get(i);
+            rangeMin = Math.min(rangeMin, bar.getLow());
+            rangeMax = Math.max(rangeMax, bar.getHigh());
+        }
+        
+        // Determine which should be low/high anchor based on swing types
+        double expectedLow, expectedHigh;
+        if (!first.isHigh && second.isHigh) {
+            // Uptrend: first is low anchor, second is high anchor
+            expectedLow = first.price;
+            expectedHigh = second.price;
+        } else if (first.isHigh && !second.isHigh) {
+            // Downtrend: first is high anchor, second is low anchor
+            expectedLow = second.price;
+            expectedHigh = first.price;
+        } else {
+            // Invalid combination
+            return false;
+        }
+        
+        // Validate anchors are true extremes (allow small tolerance for minor wicks)
+        double tolerance = 0.001; // 0.1% tolerance for minor price differences
+        boolean lowAnchorValid = Math.abs(expectedLow - rangeMin) / rangeMin <= tolerance;
+        boolean highAnchorValid = Math.abs(expectedHigh - rangeMax) / rangeMax <= tolerance;
+        
+        // Debug logging for failed validations
+        if (!lowAnchorValid || !highAnchorValid) {
+            System.out.println("FIBONACCI VALIDATION FAILED:");
+            System.out.printf("  Expected Low: %.2f, Range Min: %.2f, Valid: %b%n", expectedLow, rangeMin, lowAnchorValid);
+            System.out.printf("  Expected High: %.2f, Range Max: %.2f, Valid: %b%n", expectedHigh, rangeMax, highAnchorValid);
+            System.out.printf("  Date Range: [%d, %d], Bars: %d%n", startIndex, endIndex, endIndex - startIndex + 1);
+        }
+        
+        return lowAnchorValid && highAnchorValid;
+    }
+    
+    private java.util.List<FibonacciSet> createFibonacciSets(java.util.List<SwingPoint> swingPoints, 
+                                                           java.util.List<OhlcData> data) {
         java.util.List<FibonacciSet> fibonacciSets = new java.util.ArrayList<>();
         if (swingPoints.size() < 2) return fibonacciSets;
         
@@ -409,6 +553,15 @@ public class ChartService {
                 // Valid combinations: (low -> higher high) OR (high -> lower low)
                 boolean isValidUptrend = !first.isHigh && second.isHigh && second.price > first.price;
                 boolean isValidDowntrend = first.isHigh && !second.isHigh && second.price < first.price;
+                
+                // CRITICAL IMPROVEMENT: Validate that anchors are true extremes within the date range
+                if (isValidUptrend || isValidDowntrend) {
+                    boolean validAnchors = validateAnchorExtremes(first, second, data);
+                    if (!validAnchors) {
+                        isValidUptrend = false;
+                        isValidDowntrend = false;
+                    }
+                }
                 
                 // Additional Dinapoli validation: Check intermediate extrema
                 if (isValidUptrend) {
@@ -556,8 +709,8 @@ public class ChartService {
             }
         }
         
-        // Step 3: Create Fibonacci sets (now considers all possible pairs)
-        java.util.List<FibonacciSet> fibonacciSets = createFibonacciSets(validSwingPoints);
+        // Step 3: Create Fibonacci sets (now considers all possible pairs and validates anchor extremes)
+        java.util.List<FibonacciSet> fibonacciSets = createFibonacciSets(validSwingPoints, data);
         
         // Step 4: Validate Fibonacci levels
         validateFibonacciLevels(fibonacciSets, data);
