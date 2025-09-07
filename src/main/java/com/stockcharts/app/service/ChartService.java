@@ -85,6 +85,10 @@ public class ChartService {
             // Build internal trend lines from convex hull of highs/lows (always on; no input required)
             java.util.List<LineData> lines = generateConvexHullTrendLines(stockData);
             
+            // Generate Dinapoli-style Fibonacci retracements
+            java.util.List<LineData> fibonacciLines = generateFibonacciRetracements(stockData);
+            lines.addAll(fibonacciLines);
+            
             if (!lines.isEmpty()) {
                 request.setLines(lines);
             }
@@ -192,6 +196,43 @@ public class ChartService {
         final java.time.LocalDate date;
         Point(int x, double y, java.time.LocalDate date) { this.x = x; this.y = y; this.date = date; }
     }
+    
+    // Dinapoli Fibonacci data structures
+    private static class SwingPoint {
+        int index;
+        java.time.LocalDate date;
+        boolean isHigh;
+        double price;
+        
+        SwingPoint(int index, java.time.LocalDate date, boolean isHigh, double price) {
+            this.index = index;
+            this.date = date;
+            this.isHigh = isHigh;
+            this.price = price;
+        }
+    }
+    
+    private static class FibonacciSet {
+        int startIndex;
+        int endIndex;
+        java.time.LocalDate startDate;
+        double high;
+        double low;
+        boolean[] invalidatedLevels; // for 23.6%, 38.2%, 50%, 61.8%
+        boolean isValid = true;
+        boolean isUptrend = true;
+        
+        FibonacciSet(int startIndex, int endIndex, java.time.LocalDate startDate, 
+                    double high, double low, boolean isUptrend) {
+            this.startIndex = startIndex;
+            this.endIndex = endIndex;
+            this.startDate = startDate;
+            this.high = high;
+            this.low = low;
+            this.isUptrend = isUptrend;
+            this.invalidatedLevels = new boolean[4]; // 23.6%, 38.2%, 50%, 61.8%
+        }
+    }
 
     // Cross product (OA x OB)
     private static double cross(Point o, Point a, Point b) {
@@ -220,6 +261,293 @@ public class ChartService {
             hull.add(p);
         }
         return hull;
+    }
+    
+    // Dinapoli Fibonacci implementation
+    private java.util.List<SwingPoint> detectSwingPoints(java.util.List<OhlcData> data) {
+        java.util.List<SwingPoint> swingPoints = new java.util.ArrayList<>();
+        if (data == null || data.size() < 11) return swingPoints; // Need at least 11 bars for 5-bar fractals
+        
+        // Check each bar for swing high/low with 5-bar fractal period
+        for (int i = 5; i < data.size() - 5; i++) {
+            OhlcData current = data.get(i);
+            
+            // Check for swing high
+            boolean isSwingHigh = true;
+            for (int j = i - 5; j < i; j++) {
+                if (data.get(j).getHigh() >= current.getHigh()) {
+                    isSwingHigh = false;
+                    break;
+                }
+            }
+            if (isSwingHigh) {
+                for (int j = i + 1; j <= i + 5; j++) {
+                    if (data.get(j).getHigh() >= current.getHigh()) {
+                        isSwingHigh = false;
+                        break;
+                    }
+                }
+            }
+            
+            // Check for swing low
+            boolean isSwingLow = true;
+            for (int j = i - 5; j < i; j++) {
+                if (data.get(j).getLow() <= current.getLow()) {
+                    isSwingLow = false;
+                    break;
+                }
+            }
+            if (isSwingLow) {
+                for (int j = i + 1; j <= i + 5; j++) {
+                    if (data.get(j).getLow() <= current.getLow()) {
+                        isSwingLow = false;
+                        break;
+                    }
+                }
+            }
+            
+            if (isSwingHigh) {
+                swingPoints.add(new SwingPoint(i, current.getDate(), true, current.getHigh()));
+            }
+            if (isSwingLow) {
+                swingPoints.add(new SwingPoint(i, current.getDate(), false, current.getLow()));
+            }
+        }
+        
+        return swingPoints;
+    }
+    
+    private java.util.List<SwingPoint> validateSwingPoints(java.util.List<SwingPoint> swingPoints, 
+                                                           java.util.List<OhlcData> data) {
+        java.util.List<SwingPoint> validatedPoints = new java.util.ArrayList<>();
+        
+        for (int i = 0; i < swingPoints.size(); i++) {
+            SwingPoint current = swingPoints.get(i);
+            boolean isValid = true;
+            
+            // Check minimum strength (1% price difference from adjacent swings - reduced from 2%)
+            if (i > 0) {
+                SwingPoint previous = swingPoints.get(i - 1);
+                double avgPrice = (current.price + previous.price) / 2.0;
+                double priceDiff = Math.abs(current.price - previous.price);
+                if (priceDiff / avgPrice < 0.01) {
+                    isValid = false;
+                }
+                
+                // Check minimum separation (3 bars)
+                if (Math.abs(current.index - previous.index) < 3) {
+                    isValid = false;
+                }
+                
+                // Check alternating pattern (high must follow low and vice versa)
+                // Allow some flexibility by skipping this check if we have very few swing points
+                if (validatedPoints.size() > 2 && current.isHigh == previous.isHigh) {
+                    isValid = false;
+                }
+            }
+            
+            // Time-based invalidation: check next 10 bars after swing formation
+            if (isValid && current.index + 10 < data.size()) {
+                for (int j = current.index + 1; j <= Math.min(current.index + 10, data.size() - 1); j++) {
+                    OhlcData futureBar = data.get(j);
+                    if (current.isHigh && futureBar.getHigh() > current.price) {
+                        isValid = false;
+                        break;
+                    }
+                    if (!current.isHigh && futureBar.getLow() < current.price) {
+                        isValid = false;
+                        break;
+                    }
+                }
+            }
+            
+            if (isValid) {
+                validatedPoints.add(current);
+            }
+        }
+        
+        return validatedPoints;
+    }
+    
+    private java.util.List<FibonacciSet> createFibonacciSets(java.util.List<SwingPoint> swingPoints) {
+        java.util.List<FibonacciSet> fibonacciSets = new java.util.ArrayList<>();
+        if (swingPoints.size() < 2) return fibonacciSets;
+        
+        // Process consecutive pairs of swing points in chronological order
+        for (int i = 0; i < swingPoints.size() - 1; i++) {
+            SwingPoint first = swingPoints.get(i);
+            SwingPoint second = swingPoints.get(i + 1);
+            
+            // Ensure chronological ordering
+            if (first.index >= second.index) continue;
+            
+            // Valid combinations: (low -> higher high) OR (high -> lower low)
+            boolean isValidUptrend = !first.isHigh && second.isHigh && second.price > first.price;
+            boolean isValidDowntrend = first.isHigh && !second.isHigh && second.price < first.price;
+            
+            if (isValidUptrend || isValidDowntrend) {
+                double high = Math.max(first.price, second.price);
+                double low = Math.min(first.price, second.price);
+                
+                // Skip if price range is too small (less than 0.5% of current price - reduced from 1%)
+                if ((high - low) / high < 0.005) continue;
+                
+                FibonacciSet fibSet = new FibonacciSet(
+                    first.index, 
+                    second.index,
+                    first.date, // Start from the earlier date
+                    high, 
+                    low, 
+                    isValidUptrend
+                );
+                
+                fibonacciSets.add(fibSet);
+            }
+        }
+        
+        // Limit to maximum 8 concurrent sets to avoid clutter
+        if (fibonacciSets.size() > 8) {
+            fibonacciSets = fibonacciSets.subList(fibonacciSets.size() - 8, fibonacciSets.size());
+        }
+        
+        return fibonacciSets;
+    }
+    
+    private java.util.Map<Double, Double> calculateFibonacciLevels(FibonacciSet fibSet) {
+        java.util.Map<Double, Double> levels = new java.util.LinkedHashMap<>();
+        
+        double priceRange = fibSet.high - fibSet.low;
+        
+        // Calculate Fibonacci levels according to specification
+        levels.put(0.000, fibSet.low);                                    // 0% anchor
+        levels.put(0.236, fibSet.low + (priceRange * 0.236));            // 23.6% inside level
+        levels.put(0.382, fibSet.low + (priceRange * 0.382));            // 38.2% inside level
+        levels.put(0.500, fibSet.low + (priceRange * 0.500));            // 50% inside level
+        levels.put(0.618, fibSet.low + (priceRange * 0.618));            // 61.8% inside level
+        levels.put(1.000, fibSet.high);                                   // 100% anchor
+        
+        return levels;
+    }
+    
+    private void validateFibonacciLevels(java.util.List<FibonacciSet> fibonacciSets, java.util.List<OhlcData> data) {
+        for (FibonacciSet fibSet : fibonacciSets) {
+            java.util.Map<Double, Double> levels = calculateFibonacciLevels(fibSet);
+            
+            // Check invalidation from swing end + 1 to last bar
+            for (int i = fibSet.endIndex + 1; i < data.size(); i++) {
+                OhlcData bar = data.get(i);
+                
+                // Check each inside level for directional invalidation
+                double[] fibLevels = {0.236, 0.382, 0.500, 0.618};
+                for (int j = 0; j < fibLevels.length; j++) {
+                    double levelPrice = levels.get(fibLevels[j]);
+                    
+                    // Directional invalidation based on trend direction
+                    if (fibSet.isUptrend) {
+                        // Uptrend (low->high): Level invalidated when price breaks BELOW (support break)
+                        if (bar.getLow() < levelPrice) {
+                            fibSet.invalidatedLevels[j] = true;
+                        }
+                    } else {
+                        // Downtrend (high->low): Level invalidated when price breaks ABOVE (resistance break)
+                        if (bar.getHigh() > levelPrice) {
+                            fibSet.invalidatedLevels[j] = true;
+                        }
+                    }
+                }
+            }
+            
+            // Check if set is still valid (at least 1 inside level not invalidated)
+            boolean hasValidLevel = false;
+            for (boolean invalidated : fibSet.invalidatedLevels) {
+                if (!invalidated) {
+                    hasValidLevel = true;
+                    break;
+                }
+            }
+            fibSet.isValid = hasValidLevel;
+        }
+    }
+    
+    private java.util.List<LineData> generateFibonacciRetracements(java.util.List<OhlcData> data) {
+        java.util.List<LineData> fibonacciLines = new java.util.ArrayList<>();
+        
+        if (data == null || data.size() < 50) return fibonacciLines; // Minimum 50 bars required
+        
+        // Step 1: Detect swing points
+        java.util.List<SwingPoint> swingPoints = detectSwingPoints(data);
+        if (data.get(0).getDate().toString().contains("2024-09")) { // Only debug NFLX
+            System.out.println("DEBUG NFLX: Initial swing points: " + swingPoints.size());
+        }
+        
+        // Step 2: Validate swing points
+        java.util.List<SwingPoint> validSwingPoints = validateSwingPoints(swingPoints, data);
+        if (data.get(0).getDate().toString().contains("2024-09")) { // Only debug NFLX
+            System.out.println("DEBUG NFLX: Valid swing points: " + validSwingPoints.size());
+        }
+        
+        // Step 3: Create Fibonacci sets
+        java.util.List<FibonacciSet> fibonacciSets = createFibonacciSets(validSwingPoints);
+        if (data.get(0).getDate().toString().contains("2024-09")) { // Only debug NFLX
+            System.out.println("DEBUG NFLX: Fibonacci sets created: " + fibonacciSets.size());
+        }
+        
+        // Step 4: Validate Fibonacci levels
+        validateFibonacciLevels(fibonacciSets, data);
+        if (data.get(0).getDate().toString().contains("2024-09")) { // Only debug NFLX
+            int validSets = 0;
+            for (FibonacciSet set : fibonacciSets) {
+                if (set.isValid) validSets++;
+            }
+            System.out.println("DEBUG NFLX: Valid sets after invalidation: " + validSets);
+        }
+        
+        // Step 5: Generate line data for rendering
+        String[] colorPalette = {"#E74C3C", "#3498DB", "#9B59B6", "#F39C12", "#1ABC9C", "#E67E22", "#8E44AD", "#27AE60"};
+        java.time.LocalDate lastDate = data.get(data.size() - 1).getDate();
+        
+        int colorIndex = 0;
+        for (FibonacciSet fibSet : fibonacciSets) {
+            if (!fibSet.isValid) continue;
+            
+            java.util.Map<Double, Double> levels = calculateFibonacciLevels(fibSet);
+            String setColor = colorPalette[colorIndex % colorPalette.length];
+            
+            // Always show anchors (0% and 100%)
+            LineData anchor0 = new LineData(fibSet.startDate, lastDate, levels.get(0.000), levels.get(0.000));
+            anchor0.setColor(setColor);
+            anchor0.setStrokeWidth(2.0f);
+            anchor0.setDashed(false);
+            anchor0.setLabel("0.0%");
+            fibonacciLines.add(anchor0);
+            
+            LineData anchor100 = new LineData(fibSet.startDate, lastDate, levels.get(1.000), levels.get(1.000));
+            anchor100.setColor(setColor);
+            anchor100.setStrokeWidth(2.0f);
+            anchor100.setDashed(false);
+            anchor100.setLabel("100.0%");
+            fibonacciLines.add(anchor100);
+            
+            // Show non-invalidated inside levels
+            double[] fibLevels = {0.236, 0.382, 0.500, 0.618};
+            String[] labels = {"23.6%", "38.2%", "50.0%", "61.8%"};
+            
+            for (int i = 0; i < fibLevels.length; i++) {
+                if (!fibSet.invalidatedLevels[i]) {
+                    LineData insideLevel = new LineData(fibSet.startDate, lastDate, 
+                                                      levels.get(fibLevels[i]), levels.get(fibLevels[i]));
+                    insideLevel.setColor(setColor);
+                    insideLevel.setStrokeWidth(1.5f);
+                    insideLevel.setDashed(true);
+                    insideLevel.setLabel(labels[i]);
+                    fibonacciLines.add(insideLevel);
+                }
+            }
+            
+            colorIndex++;
+        }
+        
+        return fibonacciLines;
     }
 
     public byte[] generateChartBytes(ChartRequest request) throws IOException {
@@ -325,11 +653,13 @@ public class ChartService {
             Day startDay = new Day(startDate);
             Day endDay = new Day(endDate);
             
-            // Use different colors for each line
+            // Use the color specified in the LineData object (preserves Fibonacci set colors)
             Color lineColor = line.getAwtColor();
-            if (lineColor.equals(Color.decode("#FF0000"))) { // If default red, use color palette
+            // Only apply color palette if LineData uses the default red color (for convex hull lines)
+            if (lineColor.equals(Color.decode("#FF0000"))) { 
                 lineColor = Color.decode(lineColors[i % lineColors.length]);
             }
+            // For other colors (like Fibonacci sets), keep the specified color
             
             // Create stroke based on dashed property
             BasicStroke stroke;
