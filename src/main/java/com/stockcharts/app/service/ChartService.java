@@ -268,20 +268,20 @@ public class ChartService {
         java.util.List<SwingPoint> swingPoints = new java.util.ArrayList<>();
         if (data == null || data.size() < 11) return swingPoints; // Need at least 11 bars for 5-bar fractals
         
-        // Check each bar for swing high/low with 5-bar fractal period
-        for (int i = 5; i < data.size() - 5; i++) {
+        // Check each bar for swing high/low with 3-bar fractal period (relaxed from 5)
+        for (int i = 3; i < data.size() - 3; i++) {
             OhlcData current = data.get(i);
             
             // Check for swing high
             boolean isSwingHigh = true;
-            for (int j = i - 5; j < i; j++) {
+            for (int j = i - 3; j < i; j++) {
                 if (data.get(j).getHigh() >= current.getHigh()) {
                     isSwingHigh = false;
                     break;
                 }
             }
             if (isSwingHigh) {
-                for (int j = i + 1; j <= i + 5; j++) {
+                for (int j = i + 1; j <= i + 3; j++) {
                     if (data.get(j).getHigh() >= current.getHigh()) {
                         isSwingHigh = false;
                         break;
@@ -291,14 +291,14 @@ public class ChartService {
             
             // Check for swing low
             boolean isSwingLow = true;
-            for (int j = i - 5; j < i; j++) {
+            for (int j = i - 3; j < i; j++) {
                 if (data.get(j).getLow() <= current.getLow()) {
                     isSwingLow = false;
                     break;
                 }
             }
             if (isSwingLow) {
-                for (int j = i + 1; j <= i + 5; j++) {
+                for (int j = i + 1; j <= i + 3; j++) {
                     if (data.get(j).getLow() <= current.getLow()) {
                         isSwingLow = false;
                         break;
@@ -373,35 +373,39 @@ public class ChartService {
         java.util.List<FibonacciSet> fibonacciSets = new java.util.ArrayList<>();
         if (swingPoints.size() < 2) return fibonacciSets;
         
-        // Process consecutive pairs of swing points in chronological order
-        for (int i = 0; i < swingPoints.size() - 1; i++) {
+        // Process ALL possible pairs of swing points, not just consecutive ones
+        for (int i = 0; i < swingPoints.size(); i++) {
             SwingPoint first = swingPoints.get(i);
-            SwingPoint second = swingPoints.get(i + 1);
             
-            // Ensure chronological ordering
-            if (first.index >= second.index) continue;
-            
-            // Valid combinations: (low -> higher high) OR (high -> lower low)
-            boolean isValidUptrend = !first.isHigh && second.isHigh && second.price > first.price;
-            boolean isValidDowntrend = first.isHigh && !second.isHigh && second.price < first.price;
-            
-            if (isValidUptrend || isValidDowntrend) {
-                double high = Math.max(first.price, second.price);
-                double low = Math.min(first.price, second.price);
+            // Check all subsequent swing points as potential pairs
+            for (int j = i + 1; j < swingPoints.size(); j++) {
+                SwingPoint second = swingPoints.get(j);
                 
-                // Skip if price range is too small (less than 0.5% of current price - reduced from 1%)
-                if ((high - low) / high < 0.005) continue;
+                // Ensure chronological ordering
+                if (first.index >= second.index) continue;
                 
-                FibonacciSet fibSet = new FibonacciSet(
-                    first.index, 
-                    second.index,
-                    first.date, // Start from the earlier date
-                    high, 
-                    low, 
-                    isValidUptrend
-                );
+                // Valid combinations: (low -> higher high) OR (high -> lower low)
+                boolean isValidUptrend = !first.isHigh && second.isHigh && second.price > first.price;
+                boolean isValidDowntrend = first.isHigh && !second.isHigh && second.price < first.price;
                 
-                fibonacciSets.add(fibSet);
+                if (isValidUptrend || isValidDowntrend) {
+                    double high = Math.max(first.price, second.price);
+                    double low = Math.min(first.price, second.price);
+                    
+                    // Skip if price range is too small (less than 0.5% of current price)
+                    if ((high - low) / high < 0.005) continue;
+                    
+                    FibonacciSet fibSet = new FibonacciSet(
+                        first.index, 
+                        second.index,
+                        first.date, // Start from the earlier date
+                        high, 
+                        low, 
+                        isValidUptrend
+                    );
+                    
+                    fibonacciSets.add(fibSet);
+                }
             }
         }
         
@@ -476,30 +480,46 @@ public class ChartService {
         
         // Step 1: Detect swing points
         java.util.List<SwingPoint> swingPoints = detectSwingPoints(data);
-        if (data.get(0).getDate().toString().contains("2024-09")) { // Only debug NFLX
-            System.out.println("DEBUG NFLX: Initial swing points: " + swingPoints.size());
+        
+        // Debug for AAPL: Check if we detect the key swing points
+        if (data.get(0).getDate().getYear() == 2024 && data.get(0).getDate().getMonth().getValue() == 9) {
+            System.out.println("DEBUG AAPL: Total swing points detected: " + swingPoints.size());
+            for (SwingPoint sp : swingPoints) {
+                if ((sp.isHigh && sp.price > 235) || (!sp.isHigh && sp.price < 225)) {
+                    System.out.println("DEBUG AAPL: Key swing - " + (sp.isHigh ? "HIGH" : "LOW") + 
+                                     " at $" + String.format("%.2f", sp.price) + " on " + sp.date);
+                }
+            }
         }
         
         // Step 2: Validate swing points
         java.util.List<SwingPoint> validSwingPoints = validateSwingPoints(swingPoints, data);
-        if (data.get(0).getDate().toString().contains("2024-09")) { // Only debug NFLX
-            System.out.println("DEBUG NFLX: Valid swing points: " + validSwingPoints.size());
+        
+        if (data.get(0).getDate().getYear() == 2024 && data.get(0).getDate().getMonth().getValue() == 9) {
+            System.out.println("DEBUG AAPL: Valid swing points after validation: " + validSwingPoints.size());
+            for (SwingPoint sp : validSwingPoints) {
+                if ((sp.isHigh && sp.price > 235) || (!sp.isHigh && sp.price < 225)) {
+                    System.out.println("DEBUG AAPL: Valid key swing - " + (sp.isHigh ? "HIGH" : "LOW") + 
+                                     " at $" + String.format("%.2f", sp.price) + " on " + sp.date);
+                }
+            }
         }
         
-        // Step 3: Create Fibonacci sets
+        // Step 3: Create Fibonacci sets (now considers all possible pairs)
         java.util.List<FibonacciSet> fibonacciSets = createFibonacciSets(validSwingPoints);
-        if (data.get(0).getDate().toString().contains("2024-09")) { // Only debug NFLX
-            System.out.println("DEBUG NFLX: Fibonacci sets created: " + fibonacciSets.size());
-        }
         
         // Step 4: Validate Fibonacci levels
         validateFibonacciLevels(fibonacciSets, data);
-        if (data.get(0).getDate().toString().contains("2024-09")) { // Only debug NFLX
-            int validSets = 0;
-            for (FibonacciSet set : fibonacciSets) {
-                if (set.isValid) validSets++;
+        
+        if (data.get(0).getDate().getYear() == 2024 && data.get(0).getDate().getMonth().getValue() == 9) {
+            System.out.println("DEBUG AAPL: Fibonacci sets created: " + fibonacciSets.size());
+            for (FibonacciSet fs : fibonacciSets) {
+                if (fs.high > 235 || fs.low < 225) {
+                    System.out.println("DEBUG AAPL: Key Fib set - HIGH: $" + String.format("%.2f", fs.high) + 
+                                     " LOW: $" + String.format("%.2f", fs.low) + " Valid: " + fs.isValid + 
+                                     " Uptrend: " + fs.isUptrend);
+                }
             }
-            System.out.println("DEBUG NFLX: Valid sets after invalidation: " + validSets);
         }
         
         // Step 5: Generate line data for rendering
