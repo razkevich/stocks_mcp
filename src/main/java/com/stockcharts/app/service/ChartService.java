@@ -388,6 +388,35 @@ public class ChartService {
                 boolean isValidUptrend = !first.isHigh && second.isHigh && second.price > first.price;
                 boolean isValidDowntrend = first.isHigh && !second.isHigh && second.price < first.price;
                 
+                // Additional Dinapoli validation: Check intermediate extrema
+                if (isValidUptrend) {
+                    // For uptrend (low->high), verify no higher high exists between first and second
+                    boolean hasHigherHigh = false;
+                    for (int k = 0; k < swingPoints.size(); k++) {
+                        SwingPoint intermediate = swingPoints.get(k);
+                        if (intermediate.index > first.index && intermediate.index < second.index && 
+                            intermediate.isHigh && intermediate.price > second.price) {
+                            hasHigherHigh = true;
+                            break;
+                        }
+                    }
+                    if (hasHigherHigh) isValidUptrend = false;
+                }
+                
+                if (isValidDowntrend) {
+                    // For downtrend (high->low), verify no lower low exists between first and second
+                    boolean hasLowerLow = false;
+                    for (int k = 0; k < swingPoints.size(); k++) {
+                        SwingPoint intermediate = swingPoints.get(k);
+                        if (intermediate.index > first.index && intermediate.index < second.index && 
+                            !intermediate.isHigh && intermediate.price < second.price) {
+                            hasLowerLow = true;
+                            break;
+                        }
+                    }
+                    if (hasLowerLow) isValidDowntrend = false;
+                }
+                
                 if (isValidUptrend || isValidDowntrend) {
                     double high = Math.max(first.price, second.price);
                     double low = Math.min(first.price, second.price);
@@ -566,6 +595,13 @@ public class ChartService {
             
             colorIndex++;
         }
+        
+        // Sort lines by duration (longer lines first, shorter lines last = on top)
+        fibonacciLines.sort((line1, line2) -> {
+            long duration1 = java.time.temporal.ChronoUnit.DAYS.between(line1.getStartDate(), line1.getEndDate());
+            long duration2 = java.time.temporal.ChronoUnit.DAYS.between(line2.getStartDate(), line2.getEndDate());
+            return Long.compare(duration2, duration1); // Longer duration first, shorter last (rendered on top)
+        });
         
         return fibonacciLines;
     }
