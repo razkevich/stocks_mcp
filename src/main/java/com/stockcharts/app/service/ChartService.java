@@ -68,17 +68,39 @@ public class ChartService {
                 request.setIndicators(parseIndicators(indicators));
             }
             
+            // Resolve date range dynamically if not provided
+            java.time.LocalDate today = java.time.LocalDate.now();
+            java.time.LocalDate resolvedEnd = (endDate != null && !endDate.isBlank())
+                    ? java.time.LocalDate.parse(endDate)
+                    : today;
+            java.time.LocalDate resolvedStart;
+            if (startDate != null && !startDate.isBlank()) {
+                resolvedStart = java.time.LocalDate.parse(startDate);
+            } else {
+                // Use period hint to choose a sensible default
+                String p = (period != null) ? period.trim().toUpperCase() : "3M";
+                switch (p) {
+                    case "1D" -> resolvedStart = resolvedEnd.minusDays(7); // 1 week of context
+                    case "1W" -> resolvedStart = resolvedEnd.minusWeeks(1);
+                    case "1M" -> resolvedStart = resolvedEnd.minusMonths(1);
+                    case "3M" -> resolvedStart = resolvedEnd.minusMonths(3);
+                    case "6M" -> resolvedStart = resolvedEnd.minusMonths(6);
+                    case "1Y" -> resolvedStart = resolvedEnd.minusYears(1);
+                    default -> resolvedStart = resolvedEnd.minusMonths(6);
+                }
+            }
+
             // Check if this is a ratio (contains "/")
             java.util.List<OhlcData> stockData;
             if (symbol.contains("/")) {
-                stockData = calculateRatioData(symbol, startDate, endDate);
+                stockData = calculateRatioData(symbol, resolvedStart.toString(), resolvedEnd.toString());
             } else {
                 // Get stock data from PolygonService
                 stockData = polygonService.getAggregates(
-                    symbol, "1", "day", 
-                    startDate != null ? startDate : "2025-08-01", 
-                    endDate != null ? endDate : "2025-09-05", 
-                    true, "asc", 100);
+                    symbol, "1", "day",
+                    resolvedStart.toString(),
+                    resolvedEnd.toString(),
+                    true, "asc", 10000);
             }
             request.setOhlcData(stockData);
             
@@ -909,18 +931,27 @@ public class ChartService {
         String numeratorSymbol = symbols[0].trim();
         String denominatorSymbol = symbols[1].trim();
         
+        // Resolve date range
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate resolvedEnd = (endDate != null && !endDate.isBlank())
+                ? java.time.LocalDate.parse(endDate)
+                : today;
+        java.time.LocalDate resolvedStart = (startDate != null && !startDate.isBlank())
+                ? java.time.LocalDate.parse(startDate)
+                : resolvedEnd.minusMonths(6);
+
         // Get data for both symbols
         java.util.List<OhlcData> numeratorData = polygonService.getAggregates(
-            numeratorSymbol, "1", "day", 
-            startDate != null ? startDate : "2025-08-01", 
-            endDate != null ? endDate : "2025-09-05", 
-            true, "asc", 100);
+            numeratorSymbol, "1", "day",
+            resolvedStart.toString(),
+            resolvedEnd.toString(),
+            true, "asc", 10000);
             
         java.util.List<OhlcData> denominatorData = polygonService.getAggregates(
-            denominatorSymbol, "1", "day", 
-            startDate != null ? startDate : "2025-08-01", 
-            endDate != null ? endDate : "2025-09-05", 
-            true, "asc", 100);
+            denominatorSymbol, "1", "day",
+            resolvedStart.toString(),
+            resolvedEnd.toString(),
+            true, "asc", 10000);
             
         // Create a map for denominator data for quick lookup
         java.util.Map<java.time.LocalDate, OhlcData> denominatorMap = new java.util.HashMap<>();
